@@ -6,7 +6,8 @@
   "description": "PANEL! T-Shirts e-commerce powered by EverShop",
   "scripts": {
     "postinstall": "patch-package",
-    "setup": "evershop install",
+    "setup": "node scripts/panel-setup.mjs",
+    "setup:wizard": "evershop install",
     "build": "evershop build",
     "start": "evershop start",
     "dev": "evershop dev"
