@@ -1,0 +1,47 @@
+diff --git a/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js b/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js
+index 30c076c..4cbef57 100644
+--- a/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js
++++ b/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js
+@@ -59,7 +59,7 @@ export function addDefaultMiddlewareFuncs(app) {
+     };
+     if (isProductionMode()) {
+         app.set('trust proxy', 1);
+-        sess.cookie.secure = false;
++        sess.cookie.secure = true;
+     }
+     const adminSessionMiddleware = session({
+         ...sess,
+diff --git a/node_modules/@evershop/evershop/dist/lib/util/jwt.js b/node_modules/@evershop/evershop/dist/lib/util/jwt.js
+index e4d3ff9..7f26706 100644
+--- a/node_modules/@evershop/evershop/dist/lib/util/jwt.js
++++ b/node_modules/@evershop/evershop/dist/lib/util/jwt.js
+@@ -1,4 +1,13 @@
+ import jwt from 'jsonwebtoken';
++
++// [PANEL] Validate required JWT secrets at startup
++const REQUIRED_JWT_SECRETS = ['JWT_ADMIN_SECRET', 'JWT_ADMIN_REFRESH_SECRET'];
++for (const key of REQUIRED_JWT_SECRETS) {
++    if (!process.env[key]) {
++        throw new Error(`[PANEL] ${key} must be set before starting the application. Use 'openssl rand -base64 32' to generate a secure secret.`);
++    }
++}
++
+ export const TOKEN_TYPES = {
+     ADMIN: 'admin',
+     CUSTOMER: 'customer'
+diff --git a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js b/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
+index f8c51da..9aaccb6 100644
+--- a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
++++ b/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
+@@ -1,3 +1,9 @@
+ import { getConfig } from '../../../lib/util/getConfig.js';
+-export const getCookieSecret = () => getConfig('system.session.cookieSecret', 'keyboard cat');
++export const getCookieSecret = () => {
++    const secret = getConfig('system.session.cookieSecret');
++    if (!secret) {
++        throw new Error('[PANEL] system.session.cookieSecret must be configured. Set COOKIE_SECRET in your environment.');
++    }
++    return secret;
++};
+ //# sourceMappingURL=getCookieSecret.js.map
+\ No newline at end of file
