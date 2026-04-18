@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>window._appBase = new URL('..', document.URL).pathname.replace(/\/$/, '');</script>
+<title>Biblioteca Panel</title>
+<style>
+:root {
+  --border: 1px solid #e0e0e0;
+  --sel: #3399ff;
+  --font: 'Courier New', Courier, monospace;
+  --header-h: 48px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: #e4e4e4;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+#lib-header {
+  height: var(--header-h);
+  background: #fff;
+  border-bottom: var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+#lib-title {
+  font-size: 13px;
+  letter-spacing: 2px;
+  font-weight: bold;
+  color: #222;
+  white-space: nowrap;
+}
+
+#lib-filter-sel {
+  height: 30px;
+  border: var(--border);
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 0 6px;
+  background: #f8f8f8;
+  cursor: pointer;
+  outline: none;
+  color: #333;
+  flex-shrink: 0;
+}
+#lib-filter-sel:focus { border-color: var(--sel); }
+
+#lib-search-wrap {
+  flex: 1;
+  max-width: 220px;
+  position: relative;
+}
+#lib-search {
+  width: 100%;
+  height: 30px;
+  border: var(--border);
+  border-radius: 4px;
+  padding: 0 10px 0 26px;
+  font-family: var(--font);
+  font-size: 12px;
+  outline: none;
+  background: #f8f8f8;
+}
+#lib-search:focus { border-color: var(--sel); background: #fff; }
+#lib-search-icon {
+  position: absolute;
+  left: 7px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #999;
+  pointer-events: none;
+}
+
+#lib-count { font-size: 11px; color: #888; white-space: nowrap; }
+
+#lib-regenerar, #lib-mezclar {
+  height: 28px;
+  padding: 0 10px;
+  border: var(--border);
+  border-radius: 3px;
+  background: #fff;
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: .5px;
+  cursor: pointer;
+  color: #555;
+  transition: all .12s;
+  flex-shrink: 0;
+}
+#lib-regenerar:hover, #lib-mezclar:hover { border-color: #888; color: #000; }
+
+#lib-nav-link {
+  font-size: 11px;
+  color: var(--sel);
+  text-decoration: none;
+  white-space: nowrap;
+  letter-spacing: .5px;
+  padding: 4px 10px;
+  border: 1px solid var(--sel);
+  border-radius: 3px;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+#lib-nav-link:hover { background: var(--sel); color: #fff; }
+
+/* ── BODY SPLIT ── */
+#lib-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── LEFT: LIBRARY ── */
+#lib-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  scrollbar-width: thin;
+}
+#lib-main::-webkit-scrollbar { width: 4px; }
+#lib-main::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+#lib-canvas {
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.15);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(0,0,0,.1);
+}
+
+/* ── CELLS ── */
+.lib-cell {
+  position: absolute;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition: outline-color .1s;
+}
+.lib-cell:hover { outline-color: var(--sel); }
+.lib-cell.selected { outline-color: var(--sel); outline-width: 3px; }
+
+.lib-cell img {
+  display: block;
+  pointer-events: none;
+  position: absolute;
+  transform-origin: 50% 50%;
+}
+
+.lib-cell-badge { display: none; }
+
+/* hover overlay */
+.lib-cell-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.72);
+  padding: 5px 8px;
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 5;
+  pointer-events: none;
+}
+.lib-cell:hover .lib-cell-overlay { opacity: 1; pointer-events: all; }
+
+.lib-cell-num {
+  display: block;
+  color: #888;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.lib-cell-label {
+  display: block;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.lib-cell-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.lib-tag {
+  font-size: 9px;
+  background: rgba(255,255,255,.15);
+  color: #fff;
+  border-radius: 100px;
+  padding: 1px 7px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.25);
+  transition: background .1s;
+  white-space: nowrap;
+}
+.lib-tag:hover { background: var(--sel); border-color: var(--sel); }
+
+#lib-empty {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+/* ── RIGHT: CART ── */
+#lib-cart {
+  width: 260px;
+  flex-shrink: 0;
+  background: #fff;
+  border-left: var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+#lib-cart-header {
+  padding: 10px 14px 8px;
+  border-bottom: var(--border);
+  flex-shrink: 0;
+}
+#lib-cart-title {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: bold;
+  color: #222;
+}
+#lib-cart-count {
+  display: block;
+  font-size: 10px;
+  color: #888;
+  margin-top: 1px;
+}
+
+#lib-cart-preview-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: #f4f4f4;
+  min-height: 0;
+  position: relative;
+}
+#lib-cart-empty {
+  color: #bbb;
+  font-size: 10px;
+  letter-spacing: .5px;
+  text-align: center;
+  line-height: 1.8;
+}
+#lib-cart-canvas {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 8px rgba(0,0,0,.08);
+  display: none;
+}
+
+/* cart cells */
+.cart-cell {
+  position: absolute;
+  overflow: visible;
+  background: #fff;
+  cursor: pointer;
+}
+.cart-cell-inner {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.cart-cell-inner::after {
+  content: '×';
+  position: absolute;
+  inset: 0;
+  background: rgba(220,40,40,.55);
+  color: #fff;
+  font-size: 22px;
+  font-weight: bold;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.cart-cell:hover .cart-cell-inner::after { display: flex; }
+.cart-cell img {
+  display: block;
+  pointer-events: none;
+  position: absolute;
+  transform-origin: 50% 50%;
+}
+.cart-rot-btn {
+  position: absolute;
+  bottom: -8px; right: -8px;
+  width: 18px; height: 18px;
+  background: var(--sel);
+  border-radius: 50%;
+  border: none; cursor: pointer;
+  color: #fff; font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s;
+  z-index: 10; pointer-events: all;
+}
+.cart-cell:hover .cart-rot-btn { opacity: 1; }
+.cart-rot-popover {
+  position: absolute;
+  bottom: 14px; right: -4px;
+  background: #222; border-radius: 4px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 8px; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  white-space: nowrap;
+}
+.cart-rot-popover button {
+  background: none; border: none; color: #fff;
+  font-size: 14px; cursor: pointer; opacity: .75; padding: 0 2px;
+}
+.cart-rot-popover button:hover { opacity: 1; }
+.cart-rot-popover input[type=number] {
+  width: 36px; background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3); border-radius: 2px;
+  color: #fff; font-size: 10px; text-align: center;
+  padding: 1px 3px; font-family: var(--font); -moz-appearance: textfield;
+}
+.cart-rot-popover input[type=number]::-webkit-inner-spin-button,
+.cart-rot-popover input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+#lib-cart-footer {
+  padding: 10px 14px 12px;
+  border-top: var(--border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+#lib-cart-clear {
+  height: 30px;
+  background: #fff;
+  border: var(--border);
+  border-radius: 3px;
+  font-family: var(--font);
+  font-size: 10px;
+  cursor: pointer;
+  color: #666;
+  letter-spacing: .5px;
+  transition: all .12s;
+}
+#lib-cart-clear:hover { border-color: #888; color: #000; }
+#lib-cart-design {
+  height: 36px;
+  background: var(--sel);
+  border: none;
+  border-radius: 3px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  color: #fff;
+  transition: background .12s;
+}
+#lib-cart-design:hover:not(:disabled) { background: #0077ee; }
+#lib-cart-design:disabled { background: #ccc; cursor: default; color: #fff; }
+
+@media (max-width: 640px) {
+  #lib-cart { width: 180px; }
+  #lib-title { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div id="lib-header">
+  <span id="lib-title">BIBLIOTECA PANEL</span>
+  <select id="lib-filter-sel">
+    <option value="">Categoría: todas</option>
+  </select>
+  <div id="lib-search-wrap">
+    <span id="lib-search-icon">🔍</span>
+    <input id="lib-search" type="text" placeholder="buscar…" autocomplete="off" spellcheck="false">
+  </div>
+  <span id="lib-count"></span>
+  <button id="lib-mezclar">MEZCLAR</button>
+</div>
+
+<!-- ── BODY SPLIT ── -->
+<div id="lib-body">
+
+  <!-- Library grid -->
+  <div id="lib-main">
+    <div id="lib-canvas">
+      <div id="lib-empty">Sin resultados</div>
+    </div>
+  </div>
+
+  <!-- Cart / selection -->
+  <div id="lib-cart">
+    <div id="lib-cart-header">
+      <span id="lib-cart-title">MI SELECCIÓN</span>
+      <span id="lib-cart-count">0 paneles</span>
+    </div>
+    <div id="lib-cart-preview-wrap">
+      <span id="lib-cart-empty">Hacé clic en los<br>paneles para agregar</span>
+      <div id="lib-cart-canvas"></div>
+    </div>
+    <div id="lib-cart-footer">
+      <button id="lib-cart-clear">Limpiar selección</button>
+      <button id="lib-cart-design" disabled>Diseñar con estos →</button>
+    </div>
+  </div>
+
+</div><!-- /#lib-body -->
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+//  PANEL DATA  (label = nombre, cats = categorías filtro)
+// ══════════════════════════════════════════════════════
+const PANEL_DATA = {
+  0:  { label: 'medallon',  cats: ['objeto',     'dinero']     },
+  1:  { label: 'botella',   cats: ['objeto',     'comida']     },
+  2:  { label: 'billete',   cats: ['objeto',     'dinero']     },
+  3:  { label: 'sombrero',  cats: ['objeto',     'ropa']       },
+  4:  { label: 'paisaje',   cats: ['naturaleza', 'escena']     },
+  5:  { label: 'pato',      cats: ['animal',     'naturaleza'] },
+  6:  { label: 'letras',    cats: ['texto',      'abstracto']  },
+  7:  { label: 'pez',       cats: ['animal',     'naturaleza'] },
+  8:  { label: 'cartas',    cats: ['juego',      'naipe']      },
+  9:  { label: 'espada',    cats: ['juego',      'naipe']      },
+  10: { label: 'estante',   cats: ['objeto',     'interior']   },
+  11: { label: 'camisa',    cats: ['objeto',     'ropa']       },
+  12: { label: 'corazon',   cats: ['juego',      'naipe']      },
+  13: { label: 'espiral',   cats: ['abstracto',  'textura']    },
+  14: { label: 'ciudad',    cats: ['escena',     'naturaleza'] },
+  15: { label: 'sandwich',  cats: ['objeto',     'comida']     },
+  16: { label: 'serpiente', cats: ['animal',     'naturaleza'] },
+  17: { label: 'barcos',    cats: ['naturaleza', 'escena']     },
+  18: { label: 'texto',     cats: ['texto',      'escritura']  },
+  19: { label: 'insectos',  cats: ['animal',     'naturaleza'] },
+  20: { label: 'telarana',  cats: ['animal',     'naturaleza'] },
+  21: { label: 'aguacate',  cats: ['comida',     'vegetal']    },
+  22: { label: 'planta',    cats: ['naturaleza', 'vegetal']    },
+  23: { label: 'arana',     cats: ['animal',     'naturaleza'] },
+  24: { label: 'domino',    cats: ['juego',      'objeto']     },
+  25: { label: 'platano',   cats: ['comida',     'vegetal']    },
+};
+
+// Panel data for new panels (IDs 26–333) — catalogued from visual inspection
+Object.assign(PANEL_DATA, {
+  26:  { label: 'hombre',           cats: ['figura',      'escena']      },
+  27:  { label: 'escritorio',       cats: ['objeto',      'interior']    },
+  28:  { label: 'montanas',         cats: ['naturaleza',  'escena']      },
+  29:  { label: 'vaca',             cats: ['animal',      'naturaleza']  },
+  30:  { label: 'casa nocturna',    cats: ['arquitectura','nocturno']    },
+  31:  { label: 'luna llena',       cats: ['naturaleza',  'nocturno']    },
+  32:  { label: 'escudo',           cats: ['abstracto',   'objeto']      },
+  33:  { label: 'escalera',         cats: ['arquitectura','interior']    },
+  34:  { label: 'nave espacial',    cats: ['texto',       'escena']      },
+  35:  { label: 'flores y plantas', cats: ['naturaleza',  'vegetal']     },
+  36:  { label: 'tunel oscuro',     cats: ['abstracto',   'textura']     },
+  37:  { label: 'veta de madera',   cats: ['textura',     'naturaleza']  },
+  38:  { label: 'mechero',          cats: ['objeto',      'abstracto']   },
+  39:  { label: 'llave',            cats: ['objeto',      'interior']    },
+  40:  { label: 'camino nocturno',  cats: ['naturaleza',  'nocturno']    },
+  41:  { label: 'cueva',            cats: ['naturaleza',  'escena']      },
+  42:  { label: 'velero',           cats: ['naturaleza',  'escena']      },
+  43:  { label: 'multitud en mesa', cats: ['figura',      'escena']      },
+  44:  { label: 'banda de plantas', cats: ['naturaleza',  'vegetal']     },
+  45:  { label: 'castillo',         cats: ['arquitectura','escena']      },
+  46:  { label: 'antorcha',         cats: ['objeto',      'escena']      },
+  47:  { label: 'ventanas',         cats: ['escena',      'interior']    },
+  48:  { label: 'nino en arbol',    cats: ['figura',      'naturaleza']  },
+  49:  { label: 'troncos',          cats: ['textura',     'naturaleza']  },
+  50:  { label: 'pajaro oscuro',    cats: ['animal',      'naturaleza']  },
+  51:  { label: 'pizza',            cats: ['comida',      'objeto']      },
+  52:  { label: 'figura atardecer', cats: ['figura',      'escena']      },
+  53:  { label: 'calle ciudad',     cats: ['ciudad',      'escena']      },
+  54:  { label: 'figura nocturna',  cats: ['figura',      'nocturno']    },
+  55:  { label: 'mujer en hierba',  cats: ['figura',      'escena']      },
+  56:  { label: 'arco iris',        cats: ['abstracto',   'naturaleza']  },
+  57:  { label: 'jardin',           cats: ['naturaleza',  'vegetal']     },
+  58:  { label: 'esfera en mesa',   cats: ['objeto',      'abstracto']   },
+  59:  { label: 'trono',            cats: ['interior',    'escena']      },
+  60:  { label: 'nudo de madera',   cats: ['textura',     'naturaleza']  },
+  61:  { label: 'luna oscura',      cats: ['naturaleza',  'nocturno']    },
+  62:  { label: 'cigarro',          cats: ['objeto',      'escena']      },
+  63:  { label: 'periodico',        cats: ['texto',       'escritura']   },
+  64:  { label: 'telefono retro',   cats: ['objeto',      'interior']    },
+  65:  { label: 'hierbas',          cats: ['naturaleza',  'vegetal']     },
+  66:  { label: 'maquina de coser', cats: ['objeto',      'interior']    },
+  67:  { label: 'tronco cortado',   cats: ['textura',     'naturaleza']  },
+  68:  { label: 'fachada',          cats: ['arquitectura','escena']      },
+  69:  { label: 'puerta ladrillos', cats: ['arquitectura','interior']    },
+  70:  { label: 'letras AB',        cats: ['texto',       'abstracto']   },
+  71:  { label: 'letras DER',       cats: ['texto',       'abstracto']   },
+  72:  { label: 'cuaderno con pluma', cats: ['objeto',    'escritura']   },
+  73:  { label: 'retrato ventana',  cats: ['figura',      'interior']    },
+  74:  { label: 'muro textura',     cats: ['textura',     'arquitectura']},
+  75:  { label: 'bosque',           cats: ['naturaleza',  'escena']      },
+  76:  { label: 'ciudad industrial',cats: ['ciudad',      'escena']      },
+  77:  { label: 'paisaje luna',     cats: ['naturaleza',  'escena']      },
+  78:  { label: 'bosque nocturno',  cats: ['naturaleza',  'nocturno']    },
+  79:  { label: 'alambre espinos',  cats: ['objeto',      'textura']     },
+  80:  { label: 'flores lluvia',    cats: ['naturaleza',  'vegetal']     },
+  81:  { label: 'objetos varios',   cats: ['objeto',      'escena']      },
+  82:  { label: 'pantalla texto',   cats: ['texto',       'objeto']      },
+  83:  { label: 'nubes',            cats: ['naturaleza',  'escena']      },
+  84:  { label: 'figura con planta',cats: ['figura',      'naturaleza']  },
+  85:  { label: 'manos',            cats: ['figura',      'escena']      },
+  86:  { label: 'mosquito',         cats: ['animal',      'naturaleza']  },
+  87:  { label: 'esfera',           cats: ['abstracto',   'objeto']      },
+  88:  { label: 'ondas abstractas', cats: ['abstracto',   'textura']     },
+  89:  { label: 'codigo binario',   cats: ['texto',       'abstracto']   },
+  90:  { label: 'sombrero vaquero', cats: ['objeto',      'ropa']        },
+  91:  { label: 'licuadora',        cats: ['objeto',      'comida']      },
+  92:  { label: 'camino horizonte', cats: ['naturaleza',  'escena']      },
+  93:  { label: 'cabra',            cats: ['animal',      'naturaleza']  },
+  94:  { label: 'manzana',          cats: ['comida',      'vegetal']     },
+  95:  { label: 'boca con cuchara', cats: ['figura',      'objeto']      },
+  96:  { label: 'flores blancas',   cats: ['naturaleza',  'vegetal']     },
+  97:  { label: 'botella cerveza',  cats: ['objeto',      'comida']      },
+  98:  { label: 'pantalla interior',cats: ['texto',       'interior']    },
+  99:  { label: 'oreja',            cats: ['figura',      'escena']      },
+  100: { label: 'cuchillo',         cats: ['objeto',      'escena']      },
+  101: { label: 'simbolos',         cats: ['abstracto',   'objeto']      },
+  102: { label: 'naipe sandwich',   cats: ['juego',       'naipe']       },
+  103: { label: 'alien',            cats: ['abstracto',   'figura']      },
+  104: { label: 'puerta cerradura', cats: ['arquitectura','interior']    },
+  105: { label: 'ventana cuadros',  cats: ['arquitectura','interior']    },
+  106: { label: 'muro ladrillos',   cats: ['arquitectura','textura']     },
+  107: { label: 'espiral',          cats: ['abstracto',   'textura']     },
+  108: { label: 'mora',             cats: ['comida',      'vegetal']     },
+  109: { label: 'lineas diagonales',cats: ['abstracto',   'textura']     },
+  110: { label: 'marco vacio',      cats: ['abstracto',   'interior']    },
+  111: { label: 'taza',             cats: ['objeto',      'comida']      },
+  112: { label: 'dado',             cats: ['juego',       'objeto']      },
+  113: { label: 'peces',            cats: ['animal',      'naturaleza']  },
+  114: { label: 'figuras en lluvia',cats: ['figura',      'escena']      },
+  115: { label: 'edificio urbano',  cats: ['arquitectura','ciudad']      },
+  116: { label: 'estanteria',       cats: ['interior',    'objeto']      },
+  117: { label: 'lluvia',           cats: ['naturaleza',  'escena']      },
+  118: { label: 'figura cayendo',   cats: ['figura',      'escena']      },
+  119: { label: 'naturaleza abstracta', cats: ['abstracto','naturaleza'] },
+  120: { label: 'platos comida',    cats: ['comida',      'objeto']      },
+  121: { label: 'composicion diagonal', cats: ['abstracto','textura']   },
+  122: { label: 'plantas escalera', cats: ['naturaleza',  'interior']    },
+  123: { label: 'corredor',         cats: ['arquitectura','interior']    },
+  124: { label: 'ciudad letras',    cats: ['ciudad',      'texto']       },
+  125: { label: 'altar',            cats: ['abstracto',   'escena']      },
+  126: { label: 'ciempies',         cats: ['animal',      'naturaleza']  },
+  127: { label: 'casa aerea',       cats: ['arquitectura','escena']      },
+  128: { label: 'espiral maori',    cats: ['abstracto',   'textura']     },
+  129: { label: 'caja cerrada',     cats: ['objeto',      'interior']    },
+  130: { label: 'camino diagonal',  cats: ['naturaleza',  'escena']      },
+  131: { label: 'mono',             cats: ['animal',      'naturaleza']  },
+  132: { label: 'figura sumergida', cats: ['figura',      'escena']      },
+  133: { label: 'caja japonesa',    cats: ['objeto',      'texto']       },
+  134: { label: 'sobre carta',      cats: ['objeto',      'escritura']   },
+  135: { label: 'billetes monedas', cats: ['objeto',      'dinero']      },
+  136: { label: 'zapato monedas',   cats: ['objeto',      'dinero']      },
+  137: { label: 'bombilla libros',  cats: ['objeto',      'interior']    },
+  138: { label: 'lampara mesa',     cats: ['objeto',      'interior']    },
+  139: { label: 'carteles japoneses', cats: ['texto',     'ciudad']      },
+  140: { label: 'cielo nubes',      cats: ['naturaleza',  'escena']      },
+  141: { label: 'interior arbol',   cats: ['interior',    'naturaleza']  },
+  142: { label: 'techo vigas',      cats: ['arquitectura','interior']    },
+  143: { label: 'rosa',             cats: ['naturaleza',  'vegetal']     },
+  144: { label: 'edificio escaleras', cats: ['arquitectura','ciudad']    },
+  145: { label: 'serpiente segmentada', cats: ['animal',  'naturaleza']  },
+  146: { label: 'bosque carpa',     cats: ['naturaleza',  'escena']      },
+  147: { label: 'libros apilados',  cats: ['objeto',      'interior']    },
+  148: { label: 'libro abierto',    cats: ['objeto',      'escritura']   },
+  149: { label: 'gamepad',          cats: ['juego',       'objeto']      },
+  150: { label: 'gato',             cats: ['animal',      'naturaleza']  },
+  151: { label: 'numero 9',         cats: ['texto',       'abstracto']   },
+  152: { label: 'pies tumbados',    cats: ['figura',      'escena']      },
+  153: { label: 'sandwich',         cats: ['comida',      'objeto']      },
+  154: { label: 'serpiente',        cats: ['animal',      'naturaleza']  },
+  155: { label: 'aviones papel',    cats: ['escena',      'abstracto']   },
+  156: { label: 'texto tachado',    cats: ['texto',       'escritura']   },
+  157: { label: 'tela con flores',  cats: ['textura',     'naturaleza']  },
+  158: { label: 'telarana',         cats: ['animal',      'naturaleza']  },
+  159: { label: 'aguacate',         cats: ['comida',      'vegetal']     },
+  160: { label: 'helecho',          cats: ['naturaleza',  'vegetal']     },
+  161: { label: 'arana',            cats: ['animal',      'naturaleza']  },
+  162: { label: 'dominos',          cats: ['juego',       'objeto']      },
+  163: { label: 'platano',          cats: ['comida',      'vegetal']     },
+  164: { label: 'raton',            cats: ['animal',      'naturaleza']  },
+  165: { label: 'campanario',       cats: ['arquitectura','escena']      },
+  166: { label: 'ventana piedra',   cats: ['arquitectura','interior']    },
+  167: { label: 'globo terraqueo',  cats: ['abstracto',   'naturaleza']  },
+  168: { label: 'banera',           cats: ['objeto',      'interior']    },
+  169: { label: 'planta maceta',    cats: ['naturaleza',  'vegetal']     },
+  170: { label: 'taza preguntas',   cats: ['objeto',      'comida']      },
+  171: { label: 'ducha bano',       cats: ['objeto',      'interior']    },
+  172: { label: 'figura con ganso', cats: ['figura',      'animal']      },
+  173: { label: 'televisor',        cats: ['objeto',      'interior']    },
+  174: { label: 'mapa abstracto',   cats: ['abstracto',   'escena']      },
+  175: { label: 'ojo monstruoso',   cats: ['abstracto',   'figura']      },
+  176: { label: 'ojo con pelo',     cats: ['abstracto',   'figura']      },
+  177: { label: 'ojo espiral',      cats: ['abstracto',   'figura']      },
+  178: { label: 'arbol en ventana', cats: ['naturaleza',  'interior']    },
+  179: { label: 'pajaro paisaje',   cats: ['animal',      'naturaleza']  },
+  180: { label: 'barco tormenta',   cats: ['naturaleza',  'escena']      },
+  181: { label: 'recibo',           cats: ['texto',       'escritura']   },
+  182: { label: 'silla plantas',    cats: ['objeto',      'interior']    },
+  183: { label: 'vaso',             cats: ['objeto',      'comida']      },
+  184: { label: 'mosca',            cats: ['animal',      'naturaleza']  },
+  185: { label: 'semilla planeta',  cats: ['objeto',      'abstracto']   },
+  186: { label: 'vaso con insecto', cats: ['objeto',      'animal']      },
+  187: { label: 'estanque ondas',   cats: ['naturaleza',  'escena']      },
+  188: { label: 'patron geometrico',cats: ['abstracto',   'textura']     },
+  189: { label: 'paraguas lluvia',  cats: ['objeto',      'escena']      },
+  190: { label: 'texto fig',        cats: ['texto',       'abstracto']   },
+  191: { label: 'explosion geometrica', cats: ['abstracto','textura']    },
+  192: { label: 'olas patron',      cats: ['naturaleza',  'abstracto']   },
+  193: { label: 'beso',             cats: ['figura',      'escena']      },
+  194: { label: 'carta manuscrita', cats: ['texto',       'escritura']   },
+  195: { label: 'megafono',         cats: ['objeto',      'escena']      },
+  196: { label: 'mano con sol',     cats: ['figura',      'abstracto']   },
+  197: { label: 'sobre',            cats: ['objeto',      'escritura']   },
+  198: { label: 'formas organicas', cats: ['abstracto',   'textura']     },
+  199: { label: 'nota manuscrita',  cats: ['texto',       'escritura']   },
+  200: { label: 'pluma hoja',       cats: ['naturaleza',  'vegetal']     },
+  201: { label: 'coliflor',         cats: ['comida',      'vegetal']     },
+  202: { label: 'estanque hierbas', cats: ['naturaleza',  'escena']      },
+  203: { label: 'mensaje escrito',  cats: ['texto',       'escritura']   },
+  204: { label: 'barras verticales',cats: ['abstracto',   'textura']     },
+  205: { label: 'marco decorativo', cats: ['abstracto',   'textura']     },
+  206: { label: 'flores banda',     cats: ['naturaleza',  'vegetal']     },
+  207: { label: 'espiral figura',   cats: ['abstracto',   'figura']      },
+  208: { label: 'puerta bar',       cats: ['arquitectura','interior']    },
+  209: { label: 'campo con estrella', cats: ['naturaleza','vegetal']     },
+  210: { label: 'tormenta ciudad',  cats: ['abstracto',   'escena']      },
+  211: { label: 'retrato hombre',   cats: ['figura',      'escena']      },
+  212: { label: 'huevo frito',      cats: ['comida',      'objeto']      },
+  213: { label: 'edificio lluvia',  cats: ['arquitectura','escena']      },
+  214: { label: 'pared ladrillos',  cats: ['arquitectura','textura']     },
+  215: { label: 'cuaderno lapiz',   cats: ['objeto',      'escritura']   },
+  216: { label: 'tela estampada',   cats: ['textura',     'naturaleza']  },
+  217: { label: 'lampara pie',      cats: ['objeto',      'interior']    },
+  218: { label: 'islas flotantes',  cats: ['naturaleza',  'escena']      },
+  219: { label: 'corredor oscuro',  cats: ['arquitectura','interior']    },
+  220: { label: 'cerradura',        cats: ['objeto',      'interior']    },
+  221: { label: 'campo lluvia',     cats: ['naturaleza',  'escena']      },
+  222: { label: 'coche',            cats: ['objeto',      'escena']      },
+  223: { label: 'sol geometrico',   cats: ['abstracto',   'naturaleza']  },
+  224: { label: 'tierra agrietada', cats: ['naturaleza',  'textura']     },
+  225: { label: 'firma',            cats: ['texto',       'escritura']   },
+  226: { label: 'bombilla abstracta', cats: ['abstracto', 'objeto']      },
+  227: { label: 'figura boca abajo',cats: ['figura',      'escena']      },
+  228: { label: 'ramas entrecruzadas', cats: ['naturaleza','textura']    },
+  229: { label: 'luna llena',       cats: ['naturaleza',  'nocturno']    },
+  230: { label: 'anillos arbol',    cats: ['textura',     'naturaleza']  },
+  231: { label: 'ramas con hojas',  cats: ['naturaleza',  'vegetal']     },
+  232: { label: 'figura tormenta',  cats: ['figura',      'escena']      },
+  233: { label: 'caja perspectiva', cats: ['objeto',      'interior']    },
+  234: { label: 'flores cenital',   cats: ['naturaleza',  'vegetal']     },
+  235: { label: 'letras abstractas',cats: ['texto',       'abstracto']   },
+  236: { label: 'puerta ideogramas',cats: ['texto',       'arquitectura']},
+  237: { label: 'sol sobre olas',   cats: ['naturaleza',  'escena']      },
+  238: { label: 'habitacion cenital', cats: ['interior',  'escena']      },
+  239: { label: 'gato tumbado',     cats: ['animal',      'naturaleza']  },
+  240: { label: 'tienda fachada',   cats: ['arquitectura','ciudad']      },
+  241: { label: 'textura biomorfa', cats: ['abstracto',   'textura']     },
+  242: { label: 'collage virgen',   cats: ['abstracto',   'figura']      },
+  243: { label: 'campo hierba',     cats: ['naturaleza',  'escena']      },
+  244: { label: 'espiral madera',   cats: ['textura',     'naturaleza']  },
+  245: { label: 'marco montanas',   cats: ['objeto',      'interior']    },
+  246: { label: 'cortina lluvia',   cats: ['abstracto',   'textura']     },
+  247: { label: 'hojas',            cats: ['naturaleza',  'vegetal']     },
+  248: { label: 'tunel espiral',    cats: ['abstracto',   'textura']     },
+  249: { label: 'arbol luna',       cats: ['naturaleza',  'nocturno']    },
+  250: { label: 'cafe interior',    cats: ['interior',    'escena']      },
+  251: { label: 'retrato nino',     cats: ['figura',      'escena']      },
+  252: { label: 'figuras primitivas', cats: ['abstracto', 'texto']       },
+  253: { label: 'margarita',        cats: ['naturaleza',  'vegetal']     },
+  254: { label: 'letras NDE',       cats: ['texto',       'abstracto']   },
+  255: { label: 'boceto interfaz',  cats: ['texto',       'abstracto']   },
+  256: { label: 'bosque montana',   cats: ['naturaleza',  'escena']      },
+  257: { label: 'estratos tierra',  cats: ['naturaleza',  'textura']     },
+  258: { label: 'corazon anatomico',cats: ['figura',      'abstracto']   },
+  259: { label: 'clavos',           cats: ['objeto',      'textura']     },
+  260: { label: 'arbol estallando', cats: ['naturaleza',  'abstracto']   },
+  261: { label: 'nubes',            cats: ['naturaleza',  'escena']      },
+  262: { label: 'flor grande',      cats: ['naturaleza',  'vegetal']     },
+  263: { label: 'tunel vortice',    cats: ['abstracto',   'textura']     },
+  264: { label: 'boveda',           cats: ['arquitectura','interior']    },
+  265: { label: 'olas decorativas', cats: ['abstracto',   'textura']     },
+  266: { label: 'reloj boca',       cats: ['texto',       'figura']      },
+  267: { label: 'hombre smoking',   cats: ['figura',      'ropa']        },
+  268: { label: 'pina',             cats: ['comida',      'vegetal']     },
+  269: { label: 'pastilla',         cats: ['objeto',      'texto']       },
+  270: { label: 'cueva abertura',   cats: ['abstracto',   'naturaleza']  },
+  271: { label: 'codigo QR',        cats: ['abstracto',   'texto']       },
+  272: { label: 'carretera campo',  cats: ['naturaleza',  'escena']      },
+  273: { label: 'cala flores',      cats: ['naturaleza',  'vegetal']     },
+  274: { label: 'arbol campo',      cats: ['naturaleza',  'escena']      },
+  275: { label: 'texto consumo',    cats: ['texto',       'escritura']   },
+  276: { label: 'mandala floral',   cats: ['abstracto',   'vegetal']     },
+  277: { label: 'ojos primer plano',cats: ['figura',      'escena']      },
+  278: { label: 'bandera rayas',    cats: ['abstracto',   'textura']     },
+  279: { label: 'televisor imagen', cats: ['objeto',      'interior']    },
+  280: { label: 'libros',           cats: ['objeto',      'escritura']   },
+  281: { label: 'pantalla cajero',  cats: ['texto',       'objeto']      },
+  282: { label: 'cursor mouse',     cats: ['abstracto',   'objeto']      },
+  283: { label: 'numeros 264',      cats: ['texto',       'abstracto']   },
+  284: { label: 'flecha curva',     cats: ['abstracto',   'escena']      },
+  285: { label: 'torta',            cats: ['comida',      'objeto']      },
+  286: { label: 'castillo banderas',cats: ['arquitectura','escena']      },
+  287: { label: 'sopa con pan',     cats: ['comida',      'objeto']      },
+  288: { label: 'partitura',        cats: ['texto',       'escritura']   },
+  289: { label: 'pelota',           cats: ['objeto',      'juego']       },
+  290: { label: 'frasco',           cats: ['objeto',      'comida']      },
+  291: { label: 'robot texto',      cats: ['objeto',      'texto']       },
+  292: { label: 'extraterrestre',   cats: ['abstracto',   'figura']      },
+  293: { label: 'formas biomorvas', cats: ['abstracto',   'textura']     },
+  294: { label: 'disco vortice',    cats: ['abstracto',   'textura']     },
+  295: { label: 'ventana arbol',    cats: ['interior',    'naturaleza']  },
+  296: { label: 'boligrafo rosa',   cats: ['objeto',      'naturaleza']  },
+  297: { label: 'rostro mascara',   cats: ['figura',      'abstracto']   },
+  298: { label: 'escamas patron',   cats: ['textura',     'abstracto']   },
+  299: { label: 'mapa continentes', cats: ['abstracto',   'escena']      },
+  300: { label: 'rejas',            cats: ['abstracto',   'textura']     },
+  301: { label: 'lata',             cats: ['objeto',      'comida']      },
+  302: { label: 'cofre',            cats: ['objeto',      'interior']    },
+  303: { label: 'patron triangular',cats: ['abstracto',   'textura']     },
+  304: { label: 'lago luna',        cats: ['naturaleza',  'nocturno']    },
+  305: { label: 'vaca frente',      cats: ['animal',      'naturaleza']  },
+  306: { label: 'arbol campo',      cats: ['naturaleza',  'escena']      },
+  307: { label: 'luna textura',     cats: ['naturaleza',  'nocturno']    },
+  308: { label: 'texto CONT NET',   cats: ['texto',       'abstracto']   },
+  309: { label: 'collage escenas',  cats: ['abstracto',   'objeto']      },
+  310: { label: 'collage ajedrez',  cats: ['abstracto',   'juego']       },
+  311: { label: 'collage objetos',  cats: ['abstracto',   'objeto']      },
+  312: { label: 'control PS',       cats: ['objeto',      'juego']       },
+  313: { label: 'planta maceta',    cats: ['naturaleza',  'vegetal']     },
+  314: { label: 'montanas luna',    cats: ['naturaleza',  'nocturno']    },
+  315: { label: 'estanteria TV',    cats: ['interior',    'objeto']      },
+  316: { label: 'desnudo',          cats: ['figura',      'escena']      },
+  317: { label: 'mariposa',         cats: ['animal',      'naturaleza']  },
+  318: { label: 'flores banda',     cats: ['naturaleza',  'vegetal']     },
+  319: { label: 'arco curva',       cats: ['abstracto',   'textura']     },
+  320: { label: 'tejado firma',     cats: ['arquitectura','textura']     },
+  321: { label: 'sello circular',   cats: ['abstracto',   'objeto']      },
+  322: { label: 'hongo flotante',   cats: ['naturaleza',  'abstracto']   },
+  323: { label: 'canoa',            cats: ['naturaleza',  'escena']      },
+  324: { label: 'espirales',        cats: ['abstracto',   'textura']     },
+  325: { label: 'ovalos oscuros',   cats: ['abstracto',   'textura']     },
+  326: { label: 'skyline nocturno', cats: ['ciudad',      'nocturno']    },
+  327: { label: 'billete retrato',  cats: ['objeto',      'dinero']      },
+  328: { label: 'monstera tenedor', cats: ['naturaleza',  'vegetal']     },
+  329: { label: 'mascara demonio',  cats: ['abstracto',   'figura']      },
+  330: { label: 'texto cirílico',   cats: ['texto',       'escena']      },
+  331: { label: 'flor simbolo',     cats: ['abstracto',   'naturaleza']  },
+  332: { label: 'pan circo luna',   cats: ['comida',      'escena']      },
+  333: { label: 'collage naturaleza', cats: ['abstracto', 'naturaleza']  },
+});
+
+// ══════════════════════════════════════════════════════
+//  IMAGE MANIFEST  (replaces the old probe/discovery)
+// ══════════════════════════════════════════════════════
+let IMAGES = [];
+
+/**
+ * Loads all image metadata from a single pre-generated manifest.json.
+ * One HTTP request replaces the old 334-probe discovery loop.
+ * manifest.json is regenerated by: node generate-manifest.mjs
+ */
+function probeImages(done) {
+  fetch('../images/manifest.json')
+    .then(r => {
+      if (!r.ok) throw new Error(`manifest fetch failed: ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      IMAGES = data.map(entry => ({
+        id:    entry.id,
+        src:   '../' + entry.src,
+        lbl:   entry.lbl,
+        ratio: entry.ratio || 1,
+      }));
+      done();
+    })
+    .catch(err => {
+      console.error('manifest.json load failed:', err);
+      // Graceful degradation: show empty gallery rather than hang
+      IMAGES = [];
+      done();
+    });
+}
+
+// ══════════════════════════════════════════════════════
+//  BSP ALGORITHMS
+// ══════════════════════════════════════════════════════
+let _uid = 0;
+const uid   = () => 'n' + (++_uid);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const shuffleArray = arr => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+function _effectiveRatio(img) {
+  const r = img.ratio || 1, rot = img.rotation || 0;
+  if (!rot) return r;
+  const θ = rot * Math.PI / 180;
+  const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+  return (r * cosT + sinT) / (r * sinT + cosT);
+}
+
+function greedyPartition(imgs, k) {
+  const n = imgs.length;
+  if (k >= n) return imgs.map(img => [img]);
+  if (k === 1) return [[...imgs]];
+  const totalW = imgs.reduce((s, img) => s + img.ratio, 0);
+  const targetW = totalW / k;
+  const rows = [[]]; let rowW = 0;
+  for (let i = 0; i < n; i++) {
+    const w = imgs[i].ratio;
+    const remImgs = n - i, remRows = k - rows.length;
+    const mustBreak = remRows > 0 && remImgs <= remRows && rows[rows.length - 1].length > 0;
+    const wantBreak = rows.length < k && rowW > 0 && remImgs > remRows &&
+                      Math.abs(rowW - targetW) <= Math.abs(rowW + w - targetW);
+    if (mustBreak || wantBreak) { rows.push([]); rowW = 0; }
+    rows[rows.length - 1].push(imgs[i]);
+    rowW += w;
+  }
+  return rows;
+}
+
+function leaf(imageId = null) { return { id: uid(), type: 'leaf', imageId }; }
+
+function buildRowBSP(rowImgs) {
+  if (!rowImgs.length) return leaf();
+  if (rowImgs.length === 1) return leaf(rowImgs[0].id);
+  const totalW = rowImgs.reduce((s, img) => s + (img.ratio || 1), 0) || 1;
+  return { id: uid(), type: 'split', dir: 'v',
+    ratio: clamp((rowImgs[0].ratio || 1) / totalW, 0.08, 0.92),
+    children: [leaf(rowImgs[0].id), buildRowBSP(rowImgs.slice(1))] };
+}
+
+function buildRowsBSP(rows, normH) {
+  if (rows.length === 1) return buildRowBSP(rows[0]);
+  const h0 = normH[0];
+  const restSum = normH.slice(1).reduce((a, b) => a + b, 0);
+  const restN = restSum > 0 ? normH.slice(1).map(h => h / restSum) : normH.slice(1).map(() => 1 / (normH.length - 1));
+  return { id: uid(), type: 'split', dir: 'h',
+    ratio: clamp(h0, 0.08, 0.92),
+    children: [buildRowBSP(rows[0]), buildRowsBSP(rows.slice(1), restN)] };
+}
+
+function computeAutoLayout(imgs, targetR = 0.75) {
+  if (!imgs.length) return { root: leaf(), R: targetR || 0.75 };
+  if (imgs.length === 1) return { root: leaf(imgs[0].id), R: targetR || 1 };
+  const n = imgs.length;
+  let bestResult = null, bestScore = Infinity;
+  for (let k = 1; k <= n; k++) {
+    const rows = greedyPartition(imgs, k);
+    const invS = rows.map(row => { const S = row.reduce((s, i) => s + (i.ratio || 1), 0); return S > 0 ? 1 / S : 1; });
+    const sumInvS = invS.reduce((a, b) => a + b, 0);
+    const idealR = sumInvS > 0 ? 1 / sumInvS : 0.75;
+    const meanH = 1 / k;
+    const variance = invS.reduce((s, inv) => { const h = inv / (sumInvS || 1); return s + (h - meanH) ** 2; }, 0);
+    const score = targetR > 0 ? Math.abs(Math.log(idealR / targetR)) * 5 + variance : variance;
+    if (score < bestScore) { bestScore = score; bestResult = { rows, idealR, invS, sumInvS }; }
+  }
+  const { rows, invS, sumInvS } = bestResult;
+  const normH = invS.map(inv => inv / (sumInvS || 1));
+  return { root: buildRowsBSP(rows, normH), R: bestResult.idealR };
+}
+
+// ══════════════════════════════════════════════════════
+//  IMAGE LAYOUT HELPER
+// ══════════════════════════════════════════════════════
+function computeImgLayout(ratio, rotation, cellW, cellH) {
+  const θ = (rotation || 0) * Math.PI / 180;
+  const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+  const r = ratio || 1;
+  const s = Math.min(cellW / (r * cosT + sinT), cellH / (r * sinT + cosT));
+  const iW = r * s, iH = s;
+  return { iW, iH, left: (cellW - iW) / 2, top: (cellH - iH) / 2 };
+}
+
+// ══════════════════════════════════════════════════════
+//  LIBRARY RENDERER
+// ══════════════════════════════════════════════════════
+const MARGIN = 5;
+const MIN_CELL_SIZE     = 80;  // px — minimum cell height for filtered views
+const MIN_CELL_SIZE_ALL = 150; // px — minimum cell height when filter = "todas"
+
+/** Count the number of horizontal-split rows in the BSP tree. */
+function countRows(node) {
+  if (node.type === 'leaf') return 1;
+  if (node.dir === 'h') return countRows(node.children[0]) + countRows(node.children[1]);
+  return Math.max(countRows(node.children[0]), countRows(node.children[1]));
+}
+
+// ── Throttled image loader (max 8 concurrent HTTP requests) ──────────────
+const _IMG_CONCURRENCY = 8;
+let _imgActive = 0;
+const _imgQueue = [];
+
+function _loadImg(img, src) {
+  if (_imgActive < _IMG_CONCURRENCY) {
+    _imgActive++;
+    img.addEventListener('load',  _imgRelease, { once: true });
+    img.addEventListener('error', _imgRelease, { once: true });
+    img.src = src;
+  } else {
+    _imgQueue.push({ img, src });
+  }
+}
+
+function _imgRelease() {
+  _imgActive--;
+  if (_imgQueue.length) {
+    const { img, src } = _imgQueue.shift();
+    _imgActive++;
+    img.addEventListener('load',  _imgRelease, { once: true });
+    img.addEventListener('error', _imgRelease, { once: true });
+    img.src = src;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+function renderLibLeaf(node, x, y, w, h, parent) {
+  const el = document.createElement('div');
+  el.className = 'lib-cell';
+  el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+
+  if (node.imageId === null) { parent.appendChild(el); return; }
+
+  const imgData = IMAGES[node.imageId];
+  if (!imgData) { parent.appendChild(el); return; }
+
+  el.dataset.imgId = node.imageId;
+
+  const lay = computeImgLayout(imgData.ratio || 1, imgData.rotation || 0, w, h);
+  const img = document.createElement('img');
+  img.draggable = false;
+  img.style.cssText = `width:${lay.iW}px;height:${lay.iH}px;left:${lay.left}px;top:${lay.top}px;`;
+  _loadImg(img, imgData.src);
+  el.appendChild(img);
+
+  // Highlight if already in cart
+  if (CART.has(node.imageId)) el.classList.add('selected');
+
+  // Click → add to cart
+  el.addEventListener('click', e => {
+    if (e.target.classList.contains('lib-tag')) return;
+    cartAdd(node.imageId);
+  });
+
+  // Hover overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'lib-cell-overlay';
+
+  const num = document.createElement('span');
+  num.className = 'lib-cell-num';
+  num.textContent = `PANEL ${imgData.lbl}`;
+  overlay.appendChild(num);
+
+  const d = PANEL_DATA[node.imageId] || { label: '', cats: [] };
+  if (d.label) {
+    const lbl = document.createElement('span');
+    lbl.className = 'lib-cell-label';
+    lbl.textContent = d.label;
+    overlay.appendChild(lbl);
+  }
+
+  const tagsWrap = document.createElement('div');
+  tagsWrap.className = 'lib-cell-tags';
+  d.cats.forEach(cat => {
+    const chip = document.createElement('span');
+    chip.className = 'lib-tag';
+    chip.textContent = cat;
+    chip.addEventListener('click', e => {
+      e.stopPropagation();
+      setFilter(cat);
+    });
+    tagsWrap.appendChild(chip);
+  });
+  overlay.appendChild(tagsWrap);
+  el.appendChild(overlay);
+
+  parent.appendChild(el);
+}
+
+function renderLibNode(node, x, y, w, h, parent) {
+  if (node.type === 'leaf') {
+    renderLibLeaf(node, x, y, w, h, parent);
+  } else {
+    const r = node.ratio;
+    if (node.dir === 'h') {
+      const my = y + h * r;
+      renderLibNode(node.children[0], x, y,  w, my - y,       parent);
+      renderLibNode(node.children[1], x, my, w, (y + h) - my, parent);
+    } else {
+      const mx = x + w * r;
+      renderLibNode(node.children[0], x,  y, mx - x,       h, parent);
+      renderLibNode(node.children[1], mx, y, (x + w) - mx, h, parent);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  LIBRARY CANVAS SIZING & LAYOUT
+// ══════════════════════════════════════════════════════
+const _main   = document.getElementById('lib-main');
+const _canvas = document.getElementById('lib-canvas');
+let _cW = 0, _cH = 0, _lastTargetR = 1;
+
+function fitLibCanvas(rW, rH, numRows) {
+  const w = Math.max(_main.clientWidth - 32, 200);
+  const naturalH = Math.round(w * rH / rW);
+  const minH = (numRows || 1) * MIN_CELL_SIZE;
+  const h = Math.max(naturalH, minH);
+  _canvas.style.width  = w + 'px';
+  _canvas.style.height = h + 'px';
+  _cW = w; _cH = h;
+}
+
+// ══════════════════════════════════════════════════════
+//  FILTER STATE
+// ══════════════════════════════════════════════════════
+let activeFilter = '';
+
+function normStr(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function getFilteredImages() {
+  const query = normStr(document.getElementById('lib-search').value.trim());
+  return IMAGES.filter(img => {
+    const d = PANEL_DATA[img.id] || { label: '', cats: [] };
+    const matchesCat = !activeFilter || d.cats.includes(activeFilter);
+    const matchesSearch = !query ||
+      normStr(d.label).includes(query) ||
+      d.cats.some(t => normStr(t).includes(query));
+    return matchesCat && matchesSearch;
+  });
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  document.getElementById('lib-filter-sel').value = cat;
+  relayout(false);
+}
+
+function buildFilter() {
+  const sel = document.getElementById('lib-filter-sel');
+  const allCats = new Set();
+  IMAGES.forEach(img => (PANEL_DATA[img.id]?.cats || []).forEach(t => allCats.add(t)));
+  [...allCats].sort((a, b) => a.localeCompare(b, 'es')).forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat;
+    sel.appendChild(opt);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  LIBRARY LAYOUT (relayout)
+// ══════════════════════════════════════════════════════
+const _emptyEl = document.getElementById('lib-empty');
+
+function relayout(newRandom = true) {
+  // Discard queued loads from the previous layout pass
+  _imgQueue.length = 0;
+
+  const imgs = getFilteredImages();
+  document.getElementById('lib-count').textContent =
+    `${imgs.length} panel${imgs.length !== 1 ? 'es' : ''}`;
+
+  if (!imgs.length) {
+    _canvas.innerHTML = '';
+    _canvas.appendChild(_emptyEl);
+    _emptyEl.style.display = 'flex';
+    _canvas.style.width  = Math.max(_main.clientWidth - 32, 200) + 'px';
+    _canvas.style.height = '180px';
+    return;
+  }
+  _emptyEl.style.display = 'none';
+
+  const shuffled = shuffleArray(imgs.map(img => ({ ...img, ratio: Math.max(0.1, _effectiveRatio(img)) })));
+
+  if (!activeFilter) {
+    // ── "TODAS": render fila‑por‑fila, sin el clamp de buildRowsBSP ──
+    // Con 60+ filas, clamp(ratio, 0.08, 0.92) distorsionaría las alturas
+    // exponencialmente. En su lugar:
+    //   1. k filas calculado para que cada fila tenga ≈ MIN_CELL_SIZE_ALL px
+    //   2. Altura de cada fila ∝ 1/S_j  (S_j = suma de ratios de la fila)
+    //      → el ancho se llena exactamente, sin letterboxing vertical
+    const availW = Math.max(_main.clientWidth - 32, 200);
+    const totalRatioSum = shuffled.reduce((s, img) => s + img.ratio, 0);
+    const k = Math.max(1, Math.round(totalRatioSum * MIN_CELL_SIZE_ALL / availW));
+    const rows = greedyPartition(shuffled, k);
+
+    const rowSums   = rows.map(row => row.reduce((s, img) => s + img.ratio, 0));
+    const invSums   = rowSums.map(S => S > 0 ? 1 / S : 1);
+    const totalInv  = invSums.reduce((a, b) => a + b, 0);
+    const targetH   = k * MIN_CELL_SIZE_ALL;
+    const rowHs     = invSums.map(inv => (inv / totalInv) * targetH);
+
+    _cW = availW;
+    _cH = Math.round(rowHs.reduce((a, b) => a + b, 0)) + 2 * MARGIN;
+    _canvas.style.width  = _cW + 'px';
+    _canvas.style.height = _cH + 'px';
+
+    _canvas.innerHTML = '';
+    _canvas.appendChild(_emptyEl);
+
+    let y = MARGIN;
+    rows.forEach((rowImgs, j) => {
+      if (!rowImgs.length) return;
+      renderLibNode(buildRowBSP(rowImgs), MARGIN, y, _cW - 2 * MARGIN, rowHs[j], _canvas);
+      y += rowHs[j];
+    });
+
+  } else {
+    // ── FILTRO ACTIVO: comportamiento original ──
+    if (newRandom) {
+      const availW = Math.max(_main.clientWidth  - 32, 200);
+      const availH = Math.max(_main.clientHeight - 32, 200);
+      _lastTargetR = (availW / availH) * (0.8 + Math.random() * 0.4);
+    }
+    const { root, R } = computeAutoLayout(shuffled, _lastTargetR);
+    fitLibCanvas(R, 1, countRows(root));
+    _canvas.innerHTML = '';
+    _canvas.appendChild(_emptyEl);
+    renderLibNode(root, MARGIN, MARGIN, _cW - 2 * MARGIN, _cH - 2 * MARGIN, _canvas);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  CART STATE
+// ══════════════════════════════════════════════════════
+const CART = new Map(); // imageId → count
+const CART_ROTATIONS = new Map(); // imageId → degrees
+
+// Restore cart from localStorage so selection persists across navigation
+(function() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('panel-design-cart') || 'null');
+    if (saved) Object.entries(saved).forEach(([id, count]) => CART.set(parseInt(id), count));
+  } catch(e) {}
+})();
+
+function _persistCart() {
+  const data = {};
+  CART.forEach((count, id) => { data[id] = count; });
+  try { localStorage.setItem('panel-design-cart', JSON.stringify(data)); } catch(e) {}
+}
+
+function cartAdd(id) {
+  if (CART.has(id)) {
+    CART.delete(id);
+  } else {
+    CART.set(id, 1);
+  }
+  _persistCart();
+  updateCellBadge(id);
+  renderCart();
+}
+
+function cartRemove(id) {
+  CART.delete(id);
+  _persistCart();
+  updateCellBadge(id);
+  renderCart();
+}
+
+function cartClear() {
+  const ids = [...CART.keys()];
+  CART.clear();
+  _persistCart();
+  ids.forEach(id => updateCellBadge(id));
+  renderCart();
+}
+
+function updateCellBadge(id) {
+  const inCart = CART.has(id);
+  document.querySelectorAll(`.lib-cell[data-img-id="${id}"]`).forEach(el => {
+    el.classList.toggle('selected', inCart);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  CART PREVIEW RENDERER
+// ══════════════════════════════════════════════════════
+const _cartWrap   = document.getElementById('lib-cart-preview-wrap');
+const _cartCanvas = document.getElementById('lib-cart-canvas');
+const _cartEmpty  = document.getElementById('lib-cart-empty');
+
+function fitCartCanvas() {
+  const w = _cartWrap.clientWidth  - 20;
+  const h = _cartWrap.clientHeight - 20;
+  _cartCanvas.style.width  = w + 'px';
+  _cartCanvas.style.height = h + 'px';
+  return { w, h };
+}
+
+function renderCartLeaf(node, x, y, w, h, parent) {
+  const el = document.createElement('div');
+  el.className = 'cart-cell';
+  el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+
+  if (node.imageId !== null) {
+    const imgData = IMAGES[node.imageId];
+    if (imgData) {
+      const rot = CART_ROTATIONS.get(node.imageId) || 0;
+      const inner = document.createElement('div');
+      inner.className = 'cart-cell-inner';
+      const lay = computeImgLayout(imgData.ratio || 1, rot, w, h);
+      const img = document.createElement('img');
+      img.src = imgData.src;
+      img.style.cssText = `width:${lay.iW}px;height:${lay.iH}px;left:${lay.left}px;top:${lay.top}px;` +
+                          (rot ? `transform:rotate(${rot}deg);` : '');
+      inner.appendChild(img);
+      inner.addEventListener('click', () => cartRemove(node.imageId));
+      el.appendChild(inner);
+
+      // Rotation button
+      const rotBtn = document.createElement('button');
+      rotBtn.className = 'cart-rot-btn';
+      rotBtn.textContent = '↻';
+      rotBtn.title = 'Rotar';
+      rotBtn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        // Remove existing popovers
+        document.querySelectorAll('.cart-rot-popover').forEach(p => p.remove());
+        const pop = document.createElement('div');
+        pop.className = 'cart-rot-popover';
+        const btnM = document.createElement('button'); btnM.textContent = '↺'; btnM.title = '-15°';
+        const numI = document.createElement('input');  numI.type = 'number'; numI.min = 0; numI.max = 359;
+        numI.value = CART_ROTATIONS.get(node.imageId) || 0;
+        const btnP = document.createElement('button'); btnP.textContent = '↻'; btnP.title = '+15°';
+        function setRot(deg) {
+          deg = ((Math.round(deg) % 360) + 360) % 360;
+          CART_ROTATIONS.set(node.imageId, deg);
+          numI.value = deg;
+          renderCart();
+        }
+        btnM.addEventListener('click', ev2 => { ev2.stopPropagation(); setRot((CART_ROTATIONS.get(node.imageId) || 0) - 15); });
+        btnP.addEventListener('click', ev2 => { ev2.stopPropagation(); setRot((CART_ROTATIONS.get(node.imageId) || 0) + 15); });
+        numI.addEventListener('change', ev2 => { ev2.stopPropagation(); setRot(parseInt(numI.value) || 0); });
+        numI.addEventListener('click',  ev2 => ev2.stopPropagation());
+        pop.append(btnM, numI, btnP);
+        el.appendChild(pop);
+        setTimeout(() => {
+          document.addEventListener('pointerdown', function oc(ev2) {
+            if (!pop.contains(ev2.target) && ev2.target !== rotBtn) { pop.remove(); document.removeEventListener('pointerdown', oc); }
+          });
+        }, 0);
+      });
+      el.appendChild(rotBtn);
+    }
+  }
+  parent.appendChild(el);
+}
+
+function renderCartNode(node, x, y, w, h, parent) {
+  if (node.type === 'leaf') {
+    renderCartLeaf(node, x, y, w, h, parent);
+  } else {
+    const r = node.ratio;
+    if (node.dir === 'h') {
+      const my = y + h * r;
+      renderCartNode(node.children[0], x, y,  w, my - y,       parent);
+      renderCartNode(node.children[1], x, my, w, (y + h) - my, parent);
+    } else {
+      const mx = x + w * r;
+      renderCartNode(node.children[0], x,  y, mx - x,       h, parent);
+      renderCartNode(node.children[1], mx, y, (x + w) - mx, h, parent);
+    }
+  }
+}
+
+function renderCart() {
+  const total = [...CART.values()].reduce((s, n) => s + n, 0);
+  document.getElementById('lib-cart-count').textContent =
+    `${total} panel${total !== 1 ? 'es' : ''}`;
+  document.getElementById('lib-cart-design').disabled = total === 0;
+
+  if (total === 0) {
+    _cartCanvas.style.display = 'none';
+    _cartEmpty.style.display  = 'block';
+    return;
+  }
+  _cartEmpty.style.display  = 'none';
+  _cartCanvas.style.display = 'block';
+
+  // Expand cart map to image list (repeated per count)
+  const cartImgs = [];
+  CART.forEach((count, id) => {
+    for (let i = 0; i < count; i++) {
+      cartImgs.push({ ...IMAGES[id] });
+    }
+  });
+
+  // Size the canvas first so we know the target aspect ratio
+  const { w, h } = fitCartCanvas();
+  const targetR = w / h;
+
+  const { root } = computeAutoLayout(
+    cartImgs.map(img => ({ ...img, ratio: Math.max(0.1, img.ratio || 1) })),
+    targetR
+  );
+
+  _cartCanvas.innerHTML = '';
+  const m = 3;
+  renderCartNode(root, m, m, w - 2 * m, h - 2 * m, _cartCanvas);
+}
+
+// ══════════════════════════════════════════════════════
+//  NAVIGATE TO DESIGNER
+// ══════════════════════════════════════════════════════
+function goToDesigner() {
+  if (!CART.size) return;
+  _persistCart(); // already up-to-date, but ensure final state is saved
+  (window.top || window).location.href = (window._appBase || '') + '/designer';
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => { relayout(false); renderCart(); }, 150);
+});
+
+document.getElementById('lib-filter-sel').addEventListener('change', e => {
+  activeFilter = e.target.value;
+  relayout(false);
+});
+document.getElementById('lib-search').addEventListener('input', () => relayout(false));
+document.getElementById('lib-mezclar').addEventListener('click',   () => relayout(true));
+document.getElementById('lib-cart-clear').addEventListener('click', cartClear);
+document.getElementById('lib-cart-design').addEventListener('click', goToDesigner);
+
+probeImages(() => {
+  buildFilter();
+  relayout(true);
+  renderCart();
+});
+</script>
+</body>
+</html>

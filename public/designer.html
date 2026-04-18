@@ -1,0 +1,3753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>window._appBase = new URL('..', document.URL).pathname.replace(/\/$/, '');</script>
+<title>Panel Designer</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
+<style>
+:root {
+  --bg: #f0f0f0;
+  --sidebar: #f8f8f8;
+  --border: 1px solid #e0e0e0;
+  --divider-color: rgba(0,0,0,.3);
+  --divider-hover: #000;
+  --junction: #3399ff;
+  --sel: #3399ff;
+  --font: 'Courier New', Courier, monospace;
+  --canvas-bg:  #ffffff;
+  --cell-bg:    #ffffff;
+  --img-filter: none;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: #222;
+  font-family: var(--font); font-size: 13px;
+  height: 100vh; display: flex; flex-direction: column;
+  overflow: hidden; user-select: none;
+}
+
+/* ── TOOLBAR ── */
+#toolbar {
+  height: 54px; background: #fff; border-top: var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0;
+  position: relative; z-index: 100;
+}
+.tbtn {
+  background: #f0f0f0; color: #222; border: 1px solid #bbb;
+  padding: 6px 14px; cursor: pointer; font: 13px var(--font);
+  letter-spacing: .5px; transition: all .1s;
+}
+.tbtn:hover { background: #e0e0e0; color: #000; border-color: #888; }
+.tbtn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.tb-sep { width: 1px; height: 28px; background: #e0e0e0; }
+#toolbar label { color: #555; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+#toolbar input[type=number] {
+  width: 46px; background: #fff; border: 1px solid #bbb;
+  color: #111; font: 13px var(--font); padding: 5px 6px; text-align: center;
+}
+
+/* ── MAIN ── */
+#main { flex: 1; display: flex; overflow: hidden; }
+#work-area { flex: 1; display: flex; overflow: hidden; }
+#canvas-col { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+#toolbar-spacer { flex: 1; }
+
+/* ── T-SHIRT PANEL ── */
+#tshirt-panel {
+  flex: 1; display: flex; flex-direction: column;
+  border-left: var(--border); min-width: 200px;
+}
+#tshirt-viewport { flex: 1; overflow: hidden; background: #dadada; }
+#tshirt-controls {
+  height: 52px; background: #fff; border-top: var(--border);
+  display: flex; align-items: center; gap: 16px; padding: 0 16px;
+  flex-shrink: 0;
+}
+.tc-lbl { color: #999; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.tc-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; white-space: nowrap; }
+.tc-row input[type=range] { width: 80px; accent-color: #333; cursor: pointer; }
+.tc-sep { width: 1px; height: 26px; background: #e0e0e0; }
+#shirt-colors { display: flex; gap: 5px; align-items: center; }
+.shirt-swatch {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(0,0,0,.2); cursor: pointer;
+  transition: transform .1s, border-color .1s;
+}
+.shirt-swatch:hover { transform: scale(1.18); border-color: #555; }
+.shirt-swatch.active { border-color: #111; border-width: 2.5px; }
+#tshirt-loading {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; letter-spacing: 1.5px;
+  color: #999; text-transform: uppercase; pointer-events: none;
+  background: #dadada;
+}
+
+/* ── GALLERY ── */
+#gallery {
+  width: 184px; flex-shrink: 0; background: var(--sidebar);
+  border-right: var(--border); overflow-y: auto; padding: 10px 8px;
+}
+#gallery h3 { color: #777; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.gallery-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.thumb {
+  aspect-ratio: 1; background: #eee; cursor: grab; overflow: hidden;
+  border: 1px solid #ddd; position: relative; transition: border-color .12s;
+}
+.thumb:active { cursor: grabbing; }
+.thumb.dragging { opacity: .5; }
+.thumb:hover { border-color: #888; }
+.thumb.hi { border-color: var(--sel) !important; box-shadow: 0 0 0 1px var(--sel); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .12s; filter: var(--img-filter); }
+.thumb:hover img { opacity: .85; }
+.thumb-lbl {
+  position: absolute; top: 3px; left: 4px;
+  font-size: 9px; font-weight: 600; letter-spacing: .5px;
+  color: #fff; background: rgba(0,0,0,.55);
+  padding: 1px 4px; border-radius: 2px; pointer-events: none; z-index: 5;
+}
+.rot-popover { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(18,18,18,.93); display: flex; align-items: center; gap: 4px; padding: 4px 6px; z-index: 20; }
+.rot-popover button { background: none; border: none; color: #fff; font-size: 14px; cursor: pointer; padding: 0 2px; opacity: .75; line-height: 1; }
+.rot-popover button:hover { opacity: 1; }
+.rot-popover input[type=number] { width: 36px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); border-radius: 2px; color: #fff; font-size: 10px; text-align: center; padding: 1px 3px; font-family: var(--font); -moz-appearance: textfield; }
+.rot-popover input[type=number]::-webkit-inner-spin-button, .rot-popover input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.rot-popover .rot-pop-close { margin-left: auto; font-size: 10px !important; }
+.thumb-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 11px; letter-spacing: 1px; }
+.add-panels-btn {
+  aspect-ratio: 1; background: transparent; border: 2px dashed #d0d0d0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; gap: 4px; transition: border-color .15s, background .15s;
+}
+.add-panels-btn:hover { border-color: #777; background: #f5f5f5; }
+.add-panels-btn .add-icon { font-size: 28px; font-weight: 300; color: #c0c0c0; line-height: 1; transition: color .15s; }
+.add-panels-btn .add-lbl { font-size: 8px; color: #c0c0c0; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; text-align: center; transition: color .15s; }
+.add-panels-btn:hover .add-icon, .add-panels-btn:hover .add-lbl { color: #555; }
+
+/* ── CANVAS AREA ── */
+#canvas-wrapper {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 22px; overflow: auto; background: #e4e4e4; min-height: 0;
+}
+#canvas-wrapper.panorama { align-items: flex-start; }
+#canvas-frame { position: relative; flex-shrink: 0; }
+#canvas {
+  background: var(--canvas-bg); border: 2px solid rgba(0,0,0,.18);
+  position: relative; overflow: hidden; display: block;
+  box-shadow: 0 2px 16px rgba(0,0,0,.1);
+}
+
+/* ── RESIZE HANDLES ── */
+.rh {
+  position: absolute; z-index: 50;
+  background: rgba(0,0,0,0); transition: background .12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.rh::after {
+  content: ''; border-radius: 3px; pointer-events: none;
+  background: rgba(0,0,0,.22); transition: background .12s;
+}
+.rh:hover { background: rgba(0,0,0,.08); border-radius: 3px; }
+.rh:hover::after { background: rgba(0,0,0,.55); }
+.rh-n  { width: 40px; height: 8px;  top: -4px;    left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.rh-s  { width: 40px; height: 8px;  bottom: -4px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.rh-e  { width: 8px;  height: 40px; right: -4px;  top: 50%;  transform: translateY(-50%); cursor: ew-resize; }
+.rh-w  { width: 8px;  height: 40px; left: -4px;   top: 50%;  transform: translateY(-50%); cursor: ew-resize; }
+.rh-n::after, .rh-s::after { width: 28px; height: 4px; }
+.rh-e::after, .rh-w::after { width: 4px;  height: 28px; }
+.rh-ne { width: 12px; height: 12px; top: -4px;    right: -4px;  cursor: nesw-resize; }
+.rh-se { width: 12px; height: 12px; bottom: -4px; right: -4px;  cursor: nwse-resize; }
+.rh-sw { width: 12px; height: 12px; bottom: -4px; left: -4px;   cursor: nesw-resize; }
+.rh-nw { width: 12px; height: 12px; top: -4px;    left: -4px;   cursor: nwse-resize; }
+.rh-ne::after, .rh-se::after, .rh-sw::after, .rh-nw::after { width: 6px; height: 6px; border-radius: 50%; }
+
+
+/* ── CELLS ── */
+.cell { position: absolute; overflow: hidden; cursor: pointer; background: var(--cell-bg); }
+.cell.drag-over::after {
+  content: ''; position: absolute; inset: 0;
+  border: 3px dashed #3399ff; background: rgba(51,153,255,.08);
+  pointer-events: none; z-index: 1;
+}
+.cell img, .free-el img {
+  display: block; pointer-events: none;
+  filter: var(--img-filter);
+}
+.sel-overlay {
+  position: absolute; pointer-events: none; z-index: 25;
+  border: 3px solid #666; box-sizing: border-box;
+}
+
+.cell-btns {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  display: flex; gap: 5px; opacity: 0; pointer-events: none;
+  transition: opacity .15s; z-index: 15;
+}
+.cell:hover .cell-btns,
+.cell.selected .cell-btns { opacity: 1; pointer-events: all; }
+
+.sbtn {
+  background: rgba(255,255,255,.96); color: #222; border: 1px solid #999;
+  width: 46px; height: 50px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px;
+  transition: all .1s; font-size: 9px; letter-spacing: .8px;
+  font-family: var(--font);
+}
+.sbtn svg { display: block; flex-shrink: 0; }
+.sbtn:hover { background: #222; border-color: #222; color: #fff; }
+
+.cell-del {
+  position: absolute; top: 5px; right: 5px;
+  background: rgba(255,255,255,.95); color: #cc2222; border: 1px solid #cc2222;
+  width: 22px; height: 22px; cursor: pointer; font-size: 11px;
+  display: none; align-items: center; justify-content: center; z-index: 16;
+}
+.cell:hover .cell-del { display: flex; }
+.cell-del:hover { background: #cc2222; color: #fff; }
+
+.cell-lock {
+  position: absolute; top: 4px; right: 28px;
+  width: 22px; height: 22px;
+  background: rgba(255,255,255,0.85); border: none; border-radius: 4px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s; color: #888; z-index: 16;
+}
+.cell:hover .cell-lock, .cell.selected .cell-lock { opacity: 1; }
+.cell-lock.locked { opacity: 1; color: #e67e22; background: rgba(255,255,255,0.95); }
+
+.cell.dragging { opacity: 0.45; cursor: grabbing; }
+
+.cell-rot-handle {
+  position: absolute; top: -22px; right: -2px;
+  width: 18px; height: 18px;
+  background: var(--sel); border-radius: 50%;
+  cursor: grab; display: none; z-index: 30;
+  align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; user-select: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35); touch-action: none;
+}
+.cell.selected .cell-rot-handle { display: flex; }
+.cell-rot-handle:active { cursor: grabbing; }
+
+/* ── DIVIDERS ── */
+.divider { position: absolute; z-index: 20; display: flex; align-items: center; justify-content: center; }
+.divider-h { cursor: ns-resize; }
+.divider-v { cursor: ew-resize; }
+.dline {
+  background: var(--divider-color); transition: background .12s; pointer-events: none;
+  position: absolute;
+}
+.divider-h .dline { width: 100%; height: 2px; left: 0; top: 50%; transform: translateY(-50%); }
+.divider-v .dline { width: 2px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
+.divider:hover .dline { background: var(--divider-hover); }
+.dhandle {
+  position: absolute; border-radius: 3px; pointer-events: none;
+  background: rgba(160,160,160,.7); opacity: 0; transition: opacity .15s;
+  z-index: 1;
+}
+.divider-h .dhandle { width: 28px; height: 4px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+.divider-v .dhandle { width: 4px; height: 28px; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+.divider:hover .dhandle { opacity: 1; }
+
+.div-del {
+  position: absolute; background: rgba(255,255,255,.95); color: #cc2222;
+  border: 1px solid #cc2222; width: 22px; height: 22px; cursor: pointer;
+  font-size: 12px; display: none; align-items: center; justify-content: center;
+  z-index: 25; border-radius: 2px;
+}
+.divider:hover .div-del { display: flex; }
+.div-del:hover { background: #cc2222; border-color: #cc2222; color: #fff; }
+
+/* ── MODO LIMPIO (divisores ocultos) ── */
+#canvas.clean .dline     { opacity: 0; }
+#canvas.clean .div-del,
+#canvas.clean .junction,
+#canvas.clean .cell-btns,
+#canvas.clean .cell-del,
+#canvas.clean .cell-lock  { display: none !important; }
+#canvas.clean .divider   { cursor: default; pointer-events: none; }
+#canvas.clean .cell      { cursor: default; }
+
+/* ── JUNCTIONS ── */
+.junction {
+  position: absolute; z-index: 35; width: 16px; height: 16px;
+  cursor: crosshair; display: flex; align-items: center; justify-content: center;
+}
+.junction::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid transparent; transition: border-color .12s, background .12s;
+}
+.junction:hover::before { border-color: var(--junction); background: rgba(51,153,255,.25); }
+
+/* ── FREE MODE ── */
+.free-el {
+  position: absolute; cursor: move; user-select: none;
+  box-sizing: border-box; touch-action: none; overflow: hidden;
+}
+.free-el > img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  pointer-events: none;
+}
+.free-el.sel { outline: 2px solid var(--sel); outline-offset: 1px; }
+.free-el .cell-del { display: none; top: -11px; right: -11px; }
+.free-el:hover .cell-del, .free-el.sel .cell-del { display: flex; }
+
+/* Handles de resize — esquinas */
+.free-rh {
+  position: absolute; width: 10px; height: 10px;
+  background: var(--sel); border: 2px solid #fff; border-radius: 50%;
+  z-index: 200; display: none; pointer-events: auto; cursor: nwse-resize;
+}
+.free-el.sel .free-rh { display: block; }
+.free-rh-nw { top: -5px; left: -5px;   cursor: nwse-resize; }
+.free-rh-ne { top: -5px; right: -5px;  cursor: nesw-resize; }
+.free-rh-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+.free-rh-sw { bottom: -5px; left: -5px;  cursor: nesw-resize; }
+
+/* Handle de rotación — círculo en la parte superior */
+.free-rot {
+  position: absolute; width: 14px; height: 14px;
+  background: #fff; border: 2px solid var(--sel); border-radius: 50%;
+  top: -26px; left: 50%; transform: translateX(-50%);
+  cursor: grab; display: none; pointer-events: auto; z-index: 200;
+}
+.free-rot::after {
+  content: '↻'; font-size: 9px; color: var(--sel);
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; pointer-events: none;
+}
+.free-el.sel .free-rot { display: block; }
+
+
+/* Deshabilitar resize handles del canvas en modo libre */
+#canvas.free-mode ~ .rh { display: none !important; }
+/* Modo libre: canvas idéntico al modo panel en tamaño y posición, solo cambia el borde */
+#canvas.free-mode { border-color: var(--sel) !important; }
+
+#btn-free-mode.active { background: var(--sel); color: #fff; border-color: var(--sel); }
+.free-drop-hint {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; pointer-events: none;
+  font-size: 11px; letter-spacing: 1.5px; color: #c0c0c0; text-transform: uppercase;
+}
+
+/* ── CANVAS PLACEHOLDER ── */
+.canvas-ph {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px;
+}
+.canvas-ph svg { opacity: .18; }
+.canvas-ph span { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #aaa; }
+
+/* ── BADGE DE COPIAS ── */
+.auto-badge {
+  position: absolute; bottom: 5px; right: 5px;
+  background: var(--sel); color: #fff;
+  min-width: 22px; height: 22px; border-radius: 11px;
+  font-size: 11px; font-weight: bold; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 5;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  transition: background .12s;
+}
+.auto-badge:hover { background: #cc2222; }
+
+/* ── LOADERS ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-ring {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 3px solid #ddd; border-top-color: #666;
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
+#gallery-loading {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; color: #999; font-size: 12px; white-space: nowrap;
+}
+
+/* ── PANEL DIVIDER (mobile resize handle) ── */
+#panel-divider { display: none; }
+
+/* ── MINI SECONDARY VIEW ── */
+#tshirt-mini {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 110px; height: 140px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.18);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── TSHIRT CONTROLS TOGGLE BUTTON ── */
+#btn-tc-toggle {
+  display: none;
+  position: absolute;
+  bottom: 8px; right: 8px;
+  z-index: 20;
+  background: rgba(255,255,255,.85);
+  border: 1px solid #bbb;
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  padding: 0;
+}
+
+/* ── TSHIRT CONTROLS TOGGLE ── */
+#tshirt-controls.tc-collapsed { display: none; }
+#tshirt-controls.tc-collapsed + * { display: none; }  /* unused, but safe */
+
+/* ── SETTINGS DROPDOWN ── */
+#settings-wrapper { position: relative; }
+#settings-dd {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  top: auto;
+  right: 0;
+  background: #fff;
+  border: 1px solid #bbb;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14);
+  z-index: 9999;
+  min-width: 200px;
+  padding: 10px;
+  flex-direction: column;
+  gap: 10px;
+}
+#settings-dd.open { display: flex; }
+.settings-row {
+  display: flex; align-items: center; gap: 8px;
+  font: 13px var(--font); color: #333;
+}
+.tbtn.active { background: #d0d0d0; color: #000; border-color: #888; }
+
+/* ── BACKGROUND COLOR DROPDOWN ── */
+#bg-wrapper { position: static; }
+.bg-dd {
+  display: none; position: fixed;
+  background: #fff; border: 1px solid #bbb;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14);
+  z-index: 9999; padding: 8px; min-width: 160px;
+  max-height: 260px; overflow-y: auto;
+}
+.bg-dd.open { display: block; }
+.bg-dd-grid { display: flex; flex-direction: column; gap: 3px; }
+.cswatch-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 7px; cursor: pointer;
+  border: 1px solid transparent; transition: all .1s;
+}
+.cswatch-row:hover { background: #f0f0f0; border-color: #ddd; }
+.cswatch-row.active { background: #333; border-color: #333; }
+.cswatch-row.active .cswatch-lbl { color: #fff; }
+.cswatch {
+  width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,.2);
+}
+.cswatch-lbl { font-size: 12px; color: #444; }
+.bg-sep { height: 1px; background: #ebebeb; margin: 5px 0; }
+#bg-btn {
+  width: 28px; height: 28px; background: #ffffff; padding: 0;
+  border: 1.5px solid #bbb; border-radius: 2px; cursor: pointer;
+  flex-shrink: 0; transition: border-color .1s;
+}
+#bg-btn:hover { border-color: #666; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — Tablet (640–1099px)
+═══════════════════════════════════════════ */
+@media (max-width: 1099px) {
+  #gallery { width: 140px; }
+  #tshirt-controls { gap: 10px; padding: 0 10px; }
+  .tc-lbl { font-size: 10px; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — Mobile (<640px)
+═══════════════════════════════════════════ */
+@media (max-width: 639px) {
+  /* Viewport real en iOS (excluye barra de navegación) */
+  body { height: 100dvh; }
+
+  /* Toolbar compacto y scrolleable */
+  #toolbar { padding: 0 8px; gap: 6px; overflow-x: auto; flex-shrink: 0; }
+  .tbtn    { padding: 9px 12px; font-size: 12px; white-space: nowrap; }
+
+  /* Layout vertical: work-area arriba, gallery abajo */
+  #main      { flex-direction: column; }
+  #work-area { flex-direction: column; flex: 1; order: 1; overflow: hidden; min-height: 0; min-width: 0; }
+
+  /* Canvas y tshirt apilados */
+  #canvas-col {
+    flex: 3;
+    min-height: 0;
+  }
+  #canvas-wrapper {
+    padding: 12px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  #tshirt-panel {
+    flex: 2;
+    min-height: 0;
+    min-width: unset;
+    border-left: none;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  /* Divider arrastrable entre canvas y tshirt */
+  #panel-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    background: #c8c8c8;
+    flex-shrink: 0;
+    cursor: ns-resize;
+    touch-action: none;
+    position: relative;
+    z-index: 5;
+  }
+  #panel-divider::after {
+    content: '';
+    width: 48px;
+    height: 4px;
+    border-radius: 2px;
+    background: #888;
+  }
+
+  /* Tshirt: el panel de controls se oculta/muestra con toggle */
+  #tshirt-controls {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    height: 52px;
+    flex-shrink: 0;
+    padding: 0 12px;
+    gap: 12px;
+  }
+  #tshirt-controls.tc-collapsed { display: none; }
+
+  /* Gallery: franja horizontal superior */
+  #gallery {
+    order: 0;
+    width: 100%;
+    flex-direction: row;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 2px solid #ccc;
+    background: #f0f0f0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+    gap: 6px;
+    align-items: center;
+    min-height: 80px;
+  }
+  #gallery h3 { display: none; }
+  .gallery-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .gallery-grid:empty::after {
+    content: 'Sube imágenes para usarlas aquí';
+    color: #bbb;
+    font-size: 11px;
+    white-space: nowrap;
+    align-self: center;
+  }
+  .thumb {
+    width: 58px;
+    height: 58px;
+    aspect-ratio: unset;
+    flex-shrink: 0;
+  }
+
+  /* Botón toggle controles del tshirt */
+  #btn-tc-toggle { display: flex; bottom: 8px; right: 8px; }
+  /* Mini view más pequeño en mobile */
+  #tshirt-mini { width: 80px; height: 100px; }
+
+  /* Touch: sin scroll del browser sobre el canvas */
+  #canvas  { touch-action: none; }
+
+  /* Resize handles: ocultos en móvil (canvas se contiene automáticamente) */
+  .rh { display: none !important; }
+
+  /* Dividers: área táctil mínima 20px */
+  .divider   { touch-action: none; }
+  .divider-h { min-height: 20px; }
+  .divider-v { min-width:  20px; }
+}
+</style>
+</head>
+<body>
+
+<div id="main">
+  <div id="gallery">
+    <h3>Imágenes</h3>
+    <div id="gallery-loading"><div class="loader-ring"></div>Cargando imágenes…</div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <div id="work-area">
+    <div id="canvas-col">
+      <div id="canvas-wrapper">
+        <div id="canvas-frame">
+          <div id="canvas"></div>
+          <div class="rh rh-n"  data-dx="0"  data-dy="-1"></div>
+          <div class="rh rh-ne" data-dx="1"  data-dy="-1"></div>
+          <div class="rh rh-e"  data-dx="1"  data-dy="0"></div>
+          <div class="rh rh-se" data-dx="1"  data-dy="1"></div>
+          <div class="rh rh-s"  data-dx="0"  data-dy="1"></div>
+          <div class="rh rh-sw" data-dx="-1" data-dy="1"></div>
+          <div class="rh rh-w"  data-dx="-1" data-dy="0"></div>
+          <div class="rh rh-nw" data-dx="-1" data-dy="-1"></div>
+        </div>
+      </div>
+      <div id="toolbar">
+        <button class="tbtn" id="btn-generate">Generar</button>
+        <button class="tbtn" id="btn-free-mode" title="Modo libre — arrastra imágenes sin cuadrícula">Libre</button>
+        <div class="tb-sep"></div>
+        <button class="tbtn" id="btn-undo" title="Deshacer">↩</button>
+        <button class="tbtn" id="btn-redo" title="Rehacer">↪</button>
+        <div class="tb-sep"></div>
+        <div id="bg-wrapper">
+          <button id="bg-btn" title="Color de fondo"></button>
+        </div>
+        <div id="toolbar-spacer"></div>
+        <div style="display:flex;align-items:center;gap:3px" title="Rotar panel general">
+          <button class="tbtn" id="btn-rot-minus" title="-15°">↺</button>
+          <input type="number" id="panel-rotation" min="0" max="359" value="0" style="width:42px;text-align:center;font-size:11px;font-family:inherit;border:1px solid #d0d0d0;border-radius:2px;padding:2px 3px">
+          <span style="font-size:11px;color:#555">°</span>
+          <button class="tbtn" id="btn-rot-plus" title="+15°">↻</button>
+        </div>
+        <button class="tbtn" id="btn-clean" title="Ocultar divisores">👁</button>
+        <button class="tbtn" id="btn-clear" title="Limpiar">🧹</button>
+      </div>
+    </div>
+
+    <div id="panel-divider" title="Arrastra para redimensionar"></div>
+
+    <div id="tshirt-panel">
+      <div id="tshirt-viewport" style="position:relative">
+        <div id="tshirt-loading">Cargando modelo 3D…</div>
+        <button id="btn-tc-toggle" title="Controles">⚙</button>
+        <canvas id="tshirt-mini" title="Vista opuesta"></canvas>
+      </div>
+      <div id="tshirt-controls">
+        <span class="tc-lbl">Zoom</span>
+        <button class="tbtn" id="btn-zoom-in"  style="font-size:15px;padding:2px 9px;line-height:1">+</button>
+        <button class="tbtn" id="btn-zoom-out" style="font-size:15px;padding:2px 9px;line-height:1">−</button>
+        <div class="tc-sep"></div>
+        <span class="tc-lbl">Estampado</span>
+        <label class="tc-row">↔ <input type="range" id="print-size" min="30" max="150" value="100"></label>
+        <label class="tc-row">← →<input type="range" id="print-x" min="-40" max="40" value="0"></label>
+        <label class="tc-row">↑ ↓<input type="range" id="print-y" min="-40" max="40" value="0"></label>
+        <button class="tbtn" id="btn-reset-print" style="font-size:11px;padding:4px 10px">Centrar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════
+let   IMAGES      = [];  // populated by probeImages() via manifest.json
+let   MARGIN_PCT  = 1;   // margen interior (% de la dimensión media del canvas)
+let   MARGIN      = 0;   // margen en px — se recalcula en cada render()
+let   CURRENT_BG  = localStorage.getItem('panel-bg-color') || '#ffffff';
+let   PROP_W      = 7;   // proporción actual (ratio pequeño) — usada por t-shirt preview
+let   PROP_H      = 11;
+
+
+// ── Throttled image loader (max 8 concurrent HTTP requests) ──────────────
+const _IMG_CONCURRENCY = 8;
+let _imgActive = 0;
+const _imgQueue = [];
+
+function _loadImg(img, src) {
+  if (_imgActive < _IMG_CONCURRENCY) {
+    _imgActive++;
+    img.addEventListener('load',  _imgRelease, { once: true });
+    img.addEventListener('error', _imgRelease, { once: true });
+    img.src = src;
+  } else {
+    _imgQueue.push({ img, src });
+  }
+}
+function _imgRelease() {
+  _imgActive--;
+  if (_imgQueue.length) {
+    const { img, src } = _imgQueue.shift();
+    _imgActive++;
+    img.addEventListener('load',  _imgRelease, { once: true });
+    img.addEventListener('error', _imgRelease, { once: true });
+    img.src = src;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Loads all image metadata from a single pre-generated manifest.json.
+ * One HTTP request replaces the old 334-probe discovery loop.
+ * manifest.json is regenerated by: node generate-manifest.mjs
+ */
+function probeImages(done) {
+  fetch('../images/manifest.json')
+    .then(r => {
+      if (!r.ok) throw new Error(`manifest fetch failed: ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      IMAGES = data.map(entry => ({
+        id:       entry.id,
+        src:      '../' + entry.src,
+        lbl:      entry.lbl,
+        ratio:    entry.ratio || 1,
+        rotation: 0,
+      }));
+      done();
+    })
+    .catch(err => {
+      console.error('manifest.json load failed:', err);
+      IMAGES = [];
+      done();
+    });
+}
+
+// ══════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════
+let _uid = 0;
+const uid    = () => 'n' + (++_uid);
+const clamp  = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const clone  = obj => JSON.parse(JSON.stringify(obj));
+
+const shuffleArray = arr => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+// ── IMAGE COUNTS — siempre disponibles, alimentan "Generar" ──
+const IMAGE_COUNTS = new Map(); // imageId → número de copias
+const LOCKED_IMAGES = new Set(); // imageIds whose row/size is frozen in "Generar"
+
+function setImageCount(id, n) {
+  const v = Math.max(0, n);
+  if (v === 0) IMAGE_COUNTS.delete(id); else IMAGE_COUNTS.set(id, v);
+  // Actualizar badge circular
+  const thumb = document.querySelector(`.thumb[data-img-id="${id}"]`);
+  if (thumb) {
+    let badge = thumb.querySelector('.auto-badge');
+    if (v > 0) {
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'auto-badge';
+        badge.title = 'Clic para quitar una copia';
+        badge.addEventListener('click', e => {
+          e.stopPropagation();
+          setImageCount(id, (IMAGE_COUNTS.get(id) || 0) - 1);
+        });
+        thumb.appendChild(badge);
+      }
+      badge.textContent = v;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+  reorderGallery();
+}
+
+function reorderGallery() {
+  const grid = document.getElementById('gallery-grid');
+  if (!grid) return;
+  const thumbs = [...grid.querySelectorAll('.thumb')];
+  thumbs.sort((a, b) => {
+    const aUsed = IMAGE_COUNTS.has(parseInt(a.dataset.imgId)) ? 1 : 0;
+    const bUsed = IMAGE_COUNTS.has(parseInt(b.dataset.imgId)) ? 1 : 0;
+    if (aUsed !== bUsed) return bUsed - aUsed; // used first
+    return parseInt(a.dataset.imgId) - parseInt(b.dataset.imgId);
+  });
+  thumbs.forEach(t => grid.appendChild(t));
+  // Keep "+" button pinned at the bottom after sort
+  const addBtn = grid.querySelector('.add-panels-btn');
+  if (addBtn) grid.appendChild(addBtn);
+}
+
+function _effectiveRatio(img) {
+  const r = img.ratio || 1;
+  const rot = img.rotation || 0;
+  if (!rot) return r;
+  const θ = rot * Math.PI / 180;
+  const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+  // bounding-box ratio of the rotated image — same formula used in _computeImgLayout
+  return (r * cosT + sinT) / (r * sinT + cosT);
+}
+
+function _imgsFromCounts() {
+  const total = [...IMAGE_COUNTS.values()].reduce((a, b) => a + b, 0);
+  if (total > 0) {
+    const imgs = [];
+    IMAGE_COUNTS.forEach((count, id) => {
+      for (let i = 0; i < count; i++) {
+        const img = IMAGES[id];
+        if (img) imgs.push({ ...img, ratio: Math.max(0.1, _effectiveRatio(img)) });
+      }
+    });
+    return imgs;
+  }
+  // Fallback: todas las imágenes, 1 copia c/u
+  return IMAGES.map(img => ({ ...img, ratio: Math.max(0.1, _effectiveRatio(img)) }));
+}
+
+// ══════════════════════════════════════════════════════
+//  PANEL MODEL  — pure BSP tree functions
+// ══════════════════════════════════════════════════════
+const PM = {
+  leaf(imageId = null, rotation = 0) {
+    return { id: uid(), type: 'leaf', imageId, rotation };
+  },
+
+  /** Returns a new tree where the node matching nodeId is replaced by fn(node). */
+  _map(root, nodeId, fn) {
+    if (root.id === nodeId) return fn(root);
+    if (root.type === 'leaf') return root;
+    const [a, b] = root.children;
+    const na = PM._map(a, nodeId, fn);
+    const nb = PM._map(b, nodeId, fn);
+    if (na === a && nb === b) return root;
+    return { ...root, children: [na, nb] };
+  },
+
+  /** Split a leaf node into two children. The original leaf becomes child A. */
+  split(root, nodeId, dir, ratio = 0.5) {
+    return PM._map(root, nodeId, node => ({
+      id: uid(), type: 'split', dir,
+      ratio: clamp(ratio, 0.08, 0.92),
+      children: [
+        { ...node, id: uid() },   // original leaf (preserves imageId) → child A
+        PM.leaf()                 // new empty leaf → child B
+      ]
+    }));
+  },
+
+  /** Remove a split node, replacing it with a leaf (preserving any image from children). */
+  merge(root, nodeId) {
+    return PM._map(root, nodeId, node => {
+      if (node.type !== 'split') return node;
+      const [a, b] = node.children;
+      // Prefer child A's image, then B's, then null
+      const imgId = a.imageId != null ? a.imageId
+                  : b.imageId != null ? b.imageId : null;
+      return PM.leaf(imgId);
+    });
+  },
+
+  setRatio(root, nodeId, ratio) {
+    return PM._map(root, nodeId, n => ({ ...n, ratio: clamp(ratio, 0.08, 0.92) }));
+  },
+
+  setRatios(root, updates) {
+    return updates.reduce((r, u) => PM.setRatio(r, u.nodeId, u.ratio), root);
+  },
+
+  assignImage(root, nodeId, imageId) {
+    return PM._map(root, nodeId, n => ({ ...n, imageId }));
+  },
+
+  rotateImage(root, nodeId) {
+    return PM._map(root, nodeId, n => ({ ...n, rotation: ((n.rotation || 0) + 90) % 360 }));
+  },
+
+  setImageRotation(root, nodeId, angle) {
+    return PM._map(root, nodeId, n => ({ ...n, rotation: ((angle % 360) + 360) % 360 }));
+  },
+
+  find(root, nodeId) {
+    if (root.id === nodeId) return root;
+    if (root.type !== 'split') return null;
+    return PM.find(root.children[0], nodeId) || PM.find(root.children[1], nodeId);
+  },
+
+  swap(root, nodeIdA, nodeIdB) {
+    const nodeA = PM.find(root, nodeIdA);
+    const nodeB = PM.find(root, nodeIdB);
+    if (!nodeA || !nodeB || nodeA.type !== 'leaf' || nodeB.type !== 'leaf') return root;
+    let r = PM._map(root, nodeIdA, n => ({ ...n, imageId: nodeB.imageId, rotation: nodeB.rotation || 0 }));
+        r = PM._map(r, nodeIdB, n => ({ ...n, imageId: nodeA.imageId, rotation: nodeA.rotation || 0 }));
+    return r;
+  }
+};
+
+// ══════════════════════════════════════════════════════
+//  STORE
+// ══════════════════════════════════════════════════════
+const Store = (() => {
+  let _s = { root: PM.leaf(), selectedId: null,
+             freeMode: false, freeEls: [], selFreeId: null };
+  let _hist = [], _future = [];
+  const _subs = [];
+
+  const _snap   = () => clone(_s);
+  const _notify = () => _subs.forEach(fn => fn(_s));
+
+  function dispatch(action) {
+    const before = _snap();
+
+    switch (action.type) {
+      case 'SPLIT':
+        _s.root = PM.split(_s.root, action.nodeId, action.dir, action.ratio);
+        _s.selectedId = null;
+        break;
+      case 'MERGE':
+        _s.root = PM.merge(_s.root, action.nodeId);
+        if (!PM.find(_s.root, _s.selectedId)) _s.selectedId = null;
+        break;
+      case 'ASSIGN':
+        _s.root = PM.assignImage(_s.root, action.nodeId, action.imageId);
+        break;
+      case 'UNASSIGN':
+        _s.root = PM.assignImage(_s.root, action.nodeId, null);
+        break;
+      case 'ROTATE_IMAGE':
+        _s.root = PM.rotateImage(_s.root, action.nodeId);
+        break;
+      case 'SET_IMAGE_ROTATION':
+        _s.root = PM.setImageRotation(_s.root, action.nodeId, action.angle);
+        break;
+      case 'SET_RATIO':
+        _s.root = PM.setRatio(_s.root, action.nodeId, action.ratio);
+        break;
+      case 'SET_RATIOS':
+        _s.root = PM.setRatios(_s.root, action.updates);
+        break;
+      case 'SELECT':
+        _s.selectedId = action.nodeId;
+        _notify();
+        return; // no history entry for selection
+      case 'SWAP':
+        _s.root = PM.swap(_s.root, action.nodeIdA, action.nodeIdB);
+        break;
+      case 'SET_ROOT':
+        _s.root = action.root;
+        _s.selectedId = null;
+        break;
+      // ── Free mode actions ──────────────────────────────────────
+      case 'ENTER_FREE':
+        _s.freeMode   = true;
+        _s.selFreeId  = null;
+        // Si se pasan elementos (conversión desde grid), usarlos como estado inicial
+        if (action.els) _s.freeEls = action.els;
+        break;
+      case 'EXIT_FREE':
+        _s.freeMode = false; _s.selFreeId = null;
+        break;
+      case 'FREE_ADD':
+        _s.freeEls = [..._s.freeEls, action.el];
+        break;
+      case 'FREE_DEL':
+        _s.freeEls = _s.freeEls.filter(e => e.id !== action.id);
+        if (_s.selFreeId === action.id) _s.selFreeId = null;
+        break;
+      case 'FREE_MOVE':
+        _s.freeEls = _s.freeEls.map(e =>
+          e.id === action.id ? { ...e, x: action.x, y: action.y } : e);
+        break;
+      case 'FREE_RESIZE':
+        _s.freeEls = _s.freeEls.map(e =>
+          e.id === action.id ? { ...e, ...action.patch } : e);
+        break;
+      case 'FREE_SEL':
+        _s.selFreeId = action.id;
+        _notify(); return;   // sin entrada en historial
+      case 'FREE_FRONT': {
+        const mz = Math.max(1, ..._s.freeEls.map(e => e.z || 1));
+        _s.freeEls = _s.freeEls.map(e =>
+          e.id === action.id ? { ...e, z: mz + 1 } : e);
+        break;
+      }
+      case 'FREE_MOVE_ALL':
+        // Desplazar todos los elementos del workspace en la misma dirección y distancia
+        _s.freeEls = _s.freeEls.map(e => ({ ...e, x: e.x + action.dx, y: e.y + action.dy }));
+        break;
+      // ─────────────────────────────────────────────────────────
+
+      case 'CLEAR':
+        // Reset to single empty leaf and clear panel rotation
+        _s = { root: PM.leaf(), selectedId: null, freeMode: false, freeEls: [], selFreeId: null };
+        const rotSlider = document.getElementById('panel-rotation');
+        if (rotSlider) { rotSlider.value = 0; }
+        const rotVal = document.getElementById('panel-rotation-val');
+        if (rotVal) { rotVal.textContent = '0°'; }
+        const canvasEl = document.getElementById('canvas');
+        if (canvasEl) { canvasEl.style.transform = ''; }
+        TshirtPreview.setPanelRotation(0);
+        // Reset gallery image rotations, sliders, and counts
+        IMAGES.forEach(img => { img.rotation = 0; });
+        document.querySelectorAll('.thumb img').forEach(el => { el.style.transform = ''; });
+        document.querySelectorAll('.thumb-rot-bar input').forEach(sl => { sl.value = 0; });
+        document.querySelectorAll('.thumb-rot-bar span').forEach(sp => { sp.textContent = '0°'; });
+        [...IMAGE_COUNTS.keys()].forEach(id => setImageCount(id, 0));
+        break;
+      default:
+        return;
+    }
+
+    _hist.push(before);
+    if (_hist.length > 60) _hist.shift();
+    _future = [];
+    _notify();
+  }
+
+  function undo() {
+    if (!_hist.length) return;
+    _future.push(_snap());
+    _s = _hist.pop();
+    _notify();
+  }
+
+  function redo() {
+    if (!_future.length) return;
+    _hist.push(_snap());
+    _s = _future.pop();
+    _notify();
+  }
+
+  return {
+    dispatch, undo, redo,
+    subscribe: fn => _subs.push(fn),
+    get state() { return _s; },
+    get canUndo() { return _hist.length > 0; },
+    get canRedo() { return _future.length > 0; }
+  };
+})();
+
+// ══════════════════════════════════════════════════════
+//  DRAG STATE  — live ratio overrides during drag
+// ══════════════════════════════════════════════════════
+const Drag = {
+  active: false,
+  overrides: {},   // { nodeId: ratio }
+
+  effective(node) {
+    return this.overrides[node.id] !== undefined
+      ? this.overrides[node.id]
+      : node.ratio;
+  },
+
+  set(nodeId, ratio) { this.overrides[nodeId] = clamp(ratio, 0.08, 0.92); },
+  clear() { this.overrides = {}; }
+};
+
+// ══════════════════════════════════════════════════════
+//  JUNCTION DETECTION
+// ══════════════════════════════════════════════════════
+
+/** Recursively collects all dividers with their canvas-space positions. */
+function collectDividers(node, x, y, w, h, out = []) {
+  if (node.type !== 'split') return out;
+  const r = Drag.effective(node);
+  if (node.dir === 'h') {
+    const my = y + h * r;
+    out.push({ nodeId: node.id, dir: 'h', rect: { x, y, w, h },
+               p1: { x, y: my }, p2: { x: x + w, y: my } });
+    collectDividers(node.children[0], x, y,  w, h * r,       out);
+    collectDividers(node.children[1], x, my, w, h * (1 - r), out);
+  } else {
+    const mx = x + w * r;
+    out.push({ nodeId: node.id, dir: 'v', rect: { x, y, w, h },
+               p1: { x: mx, y }, p2: { x: mx, y: y + h } });
+    collectDividers(node.children[0], x,  y, w * r,       h, out);
+    collectDividers(node.children[1], mx, y, w * (1 - r), h, out);
+  }
+  return out;
+}
+
+/** Finds T-junctions: endpoints of one divider that lie on another divider. */
+function computeJunctions(dividers, cW, cH) {
+  const EPS = 2;
+  const result = [];
+
+  function onBorder(p) {
+    return p.x <= EPS || p.x >= cW - EPS || p.y <= EPS || p.y >= cH - EPS;
+  }
+
+  function onSeg(p, d) {
+    return d.dir === 'h'
+      ? Math.abs(p.y - d.p1.y) <= EPS && p.x > d.p1.x - EPS && p.x < d.p2.x + EPS
+      : Math.abs(p.x - d.p1.x) <= EPS && p.y > d.p1.y - EPS && p.y < d.p2.y + EPS;
+  }
+
+  dividers.forEach(div => {
+    [div.p1, div.p2].forEach(ep => {
+      if (onBorder(ep)) return;
+      const matches = dividers.filter(d => d.nodeId !== div.nodeId && onSeg(ep, d));
+      if (!matches.length) return;
+
+      const existing = result.find(j => Math.abs(j.x - ep.x) <= EPS && Math.abs(j.y - ep.y) <= EPS);
+      if (existing) {
+        // Add segments not yet tracked
+        const addSeg = seg => {
+          if (!existing.segs.some(s => s.nodeId === seg.nodeId)) existing.segs.push(seg);
+        };
+        addSeg({ nodeId: div.nodeId, dir: div.dir, rect: div.rect });
+        matches.forEach(m => addSeg({ nodeId: m.nodeId, dir: m.dir, rect: m.rect }));
+      } else {
+        const segs = [{ nodeId: div.nodeId, dir: div.dir, rect: div.rect }];
+        matches.forEach(m => segs.push({ nodeId: m.nodeId, dir: m.dir, rect: m.rect }));
+        result.push({ x: ep.x, y: ep.y, segs });
+      }
+    });
+  });
+
+  return result;
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDERER
+// ══════════════════════════════════════════════════════
+const Renderer = (() => {
+  let _canvas = null;
+  let _cW = 0, _cH = 0;
+
+  /* ── node rendering ─────────────────────────── */
+
+  function _renderLeaf(node, x, y, w, h, frag) {
+    const el = document.createElement('div');
+    el.className = 'cell' + (Store.state.selectedId === node.id ? ' selected' : '');
+    el.dataset.id = node.id;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+
+    // Drag from canvas cell (for swap)
+    el.setAttribute('draggable', 'true');
+    el.addEventListener('dragstart', e => {
+      e.stopPropagation();
+      e.dataTransfer.setData('application/panel-node', node.id);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+    if (node.imageId !== null && node.imageId < IMAGES.length) {
+      const _imgData = IMAGES[node.imageId];
+      const _totalRot = ((node.rotation || 0) + (_imgData?.rotation || 0)) % 360;
+      // Use actual loaded natural dimensions (same source as _bsp) for accurate ratio
+      const _thumbImg = document.querySelector(`.thumb[data-img-id="${node.imageId}"] img`);
+      const _ratio = (_thumbImg?.naturalWidth && _thumbImg?.naturalHeight)
+        ? _thumbImg.naturalWidth / _thumbImg.naturalHeight
+        : (_imgData.ratio || 1);
+
+      function _computeImgLayout(deg) {
+        const θ = deg * Math.PI / 180;
+        const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+        // Math.min = contain: la imagen se muestra completa, sin recortes.
+        const s = Math.min(w / (_ratio * cosT + sinT), h / (_ratio * sinT + cosT));
+        const iW = _ratio * s, iH = s;
+        return { iW, iH, left: (w - iW) / 2, top: (h - iH) / 2 };
+      }
+
+      const _lay = _computeImgLayout(_totalRot);
+      const img = document.createElement('img');
+      img.src = _imgData.src;
+      img.draggable = false;
+      img.style.cssText = `position:absolute;width:${_lay.iW}px;height:${_lay.iH}px;` +
+        `left:${_lay.left}px;top:${_lay.top}px;` +
+        `transform-origin:50% 50%;` +
+        (_totalRot ? `transform:rotate(${_totalRot}deg);` : '');
+      el.appendChild(img);
+
+      const del = document.createElement('button');
+      del.className = 'cell-del';
+      del.textContent = '✕';
+      del.title = 'Quitar imagen';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        Store.dispatch({ type: 'UNASSIGN', nodeId: node.id });
+      });
+      el.appendChild(del);
+
+      // ── Lock button (fix this cell's row in Generate) ──
+      const lockBtn = document.createElement('button');
+      const _isLocked = LOCKED_IMAGES.has(node.imageId);
+      lockBtn.className = 'cell-lock' + (_isLocked ? ' locked' : '');
+      lockBtn.title = _isLocked ? 'Desbloquear panel' : 'Bloquear panel (fija posición y tamaño al Generar)';
+      lockBtn.innerHTML = _isLocked
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z" opacity=".4"/><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>`;
+      lockBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (LOCKED_IMAGES.has(node.imageId)) LOCKED_IMAGES.delete(node.imageId);
+        else LOCKED_IMAGES.add(node.imageId);
+        Renderer.render(Store.state);
+      });
+      el.appendChild(lockBtn);
+
+      // ── Drag-to-rotate handle (visible when cell is selected) ──
+      const rotHandle = document.createElement('div');
+      rotHandle.className = 'cell-rot-handle';
+      rotHandle.textContent = '↻';
+      rotHandle.addEventListener('pointerdown', e => {
+        e.stopPropagation(); e.preventDefault();
+        rotHandle.setPointerCapture(e.pointerId);
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top  + rect.height / 2;
+        const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+        const startRot   = node.rotation || 0;
+        let pendingRot   = startRot;
+        function onMove(ev) {
+          const angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+          let newRot = ((startRot + angle - startAngle) % 360 + 360) % 360;
+          if (ev.shiftKey) newRot = Math.round(newRot / 15) * 15;
+          pendingRot = Math.round(newRot);
+          const galleryRot = IMAGES[node.imageId]?.rotation || 0;
+          const total = (pendingRot + galleryRot) % 360;
+          const lay = _computeImgLayout(total);
+          const cellImg = el.querySelector('img');
+          if (cellImg) {
+            cellImg.style.left      = lay.left + 'px';
+            cellImg.style.top       = lay.top  + 'px';
+            cellImg.style.width     = lay.iW   + 'px';
+            cellImg.style.height    = lay.iH   + 'px';
+            cellImg.style.transform = total ? `rotate(${total}deg)` : '';
+          }
+        }
+        function onUp() {
+          document.removeEventListener('pointermove', onMove);
+          Store.dispatch({ type: 'SET_IMAGE_ROTATION', nodeId: node.id, angle: pendingRot });
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp, { once: true });
+      });
+      el.appendChild(rotHandle);
+    }
+
+    const btns = document.createElement('div');
+    btns.className = 'cell-btns';
+
+    const bh = document.createElement('button');
+    bh.className = 'sbtn'; bh.title = 'Dividir en filas';
+    bh.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="3" y1="10" x2="17" y2="10"/></svg><span>FILAS</span>`;
+    bh.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'h' }); });
+
+    const bv = document.createElement('button');
+    bv.className = 'sbtn'; bv.title = 'Dividir en columnas';
+    bv.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="10" y1="3" x2="10" y2="17"/></svg><span>COLS</span>`;
+    bv.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'v' }); });
+
+    btns.appendChild(bh);
+    btns.appendChild(bv);
+    el.appendChild(btns);
+
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      Store.dispatch({ type: 'SELECT', nodeId: node.id });
+    });
+
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = e.dataTransfer.types.includes('application/panel-node') ? 'move' : 'copy';
+    });
+    el.addEventListener('dragenter', e => {
+      e.preventDefault();
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      const srcNodeId = e.dataTransfer.getData('application/panel-node');
+      if (srcNodeId && srcNodeId !== node.id) {
+        Store.dispatch({ type: 'SWAP', nodeIdA: srcNodeId, nodeIdB: node.id });
+        return;
+      }
+      const imageId = parseInt(e.dataTransfer.getData('text/plain'));
+      if (!isNaN(imageId)) Store.dispatch({ type: 'ASSIGN', nodeId: node.id, imageId });
+    });
+
+    frag.appendChild(el);
+  }
+
+  function _renderSplit(node, x, y, w, h, frag) {
+    const r = Drag.effective(node);
+    const [a, b] = node.children;
+    let ax, ay, aw, ah, bx, by, bw, bh, dvEl;
+
+    if (node.dir === 'h') {
+      const my = y + h * r;
+      ax = x; ay = y;  aw = w; ah = my - y;
+      bx = x; by = my; bw = w; bh = (y + h) - my;
+
+      dvEl = document.createElement('div');
+      dvEl.className = 'divider divider-h';
+      dvEl.dataset.id = node.id;
+      // 10px hit area centred on the midline
+      dvEl.style.cssText = `left:${x}px;top:${my - 5}px;width:${w}px;height:10px;`;
+    } else {
+      const mx = x + w * r;
+      ax = x;  ay = y; aw = mx - x; ah = h;
+      bx = mx; by = y; bw = (x + w) - mx; bh = h;
+
+      dvEl = document.createElement('div');
+      dvEl.className = 'divider divider-v';
+      dvEl.dataset.id = node.id;
+      dvEl.style.cssText = `left:${mx - 5}px;top:${y}px;width:10px;height:${h}px;`;
+    }
+
+    const line = document.createElement('div');
+    line.className = 'dline';
+    dvEl.appendChild(line);
+
+    const handle = document.createElement('div');
+    handle.className = 'dhandle';
+    dvEl.appendChild(handle);
+
+    const del = document.createElement('button');
+    del.className = 'div-del';
+    del.textContent = '✕';
+    del.title = 'Eliminar divisor';
+    del.addEventListener('click', e => {
+      e.stopPropagation();
+      Store.dispatch({ type: 'MERGE', nodeId: node.id });
+    });
+    dvEl.appendChild(del);
+
+    dvEl.addEventListener('pointerdown', e => {
+      if (e.target === del) return;
+      e.preventDefault(); e.stopPropagation();
+      _startDividerDrag(e, node.id, node.dir, { x, y, w, h });
+    });
+
+    frag.appendChild(dvEl);
+
+    _renderNode(a, ax, ay, aw, ah, frag);
+    _renderNode(b, bx, by, bw, bh, frag);
+  }
+
+  function _renderNode(node, x, y, w, h, frag) {
+    if (node.type === 'leaf') _renderLeaf(node, x, y, w, h, frag);
+    else _renderSplit(node, x, y, w, h, frag);
+  }
+
+  /* ── junctions ───────────────────────────────── */
+
+  function _renderJunctions(frag) {
+    const m = MARGIN;
+    const divs = collectDividers(Store.state.root, m, m, _cW - 2*m, _cH - 2*m);
+    computeJunctions(divs, _cW, _cH).forEach(j => {
+      const dot = document.createElement('div');
+      dot.className = 'junction';
+      // Centre the 16×16 dot on the junction point
+      dot.style.cssText = `left:${j.x - 8}px;top:${j.y - 8}px;`;
+      dot.addEventListener('pointerdown', e => {
+        e.preventDefault(); e.stopPropagation();
+        _startJunctionDrag(e, j);
+      });
+      frag.appendChild(dot);
+    });
+  }
+
+  /* ── drag handlers ───────────────────────────── */
+
+  function _startDividerDrag(e, nodeId, dir, rect) {
+    Drag.active = true;
+    const br = _canvas.getBoundingClientRect();
+
+    function move(e) {
+      if (dir === 'h') {
+        Drag.set(nodeId, (e.clientY - br.top  - rect.y) / rect.h);
+      } else {
+        Drag.set(nodeId, (e.clientX - br.left - rect.x) / rect.w);
+      }
+      render(Store.state);
+    }
+
+    function up(e) {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup',   up);
+      const final = Drag.overrides[nodeId];
+      Drag.clear();
+      Drag.active = false;
+      if (final !== undefined) Store.dispatch({ type: 'SET_RATIO', nodeId, ratio: final });
+      else render(Store.state);
+    }
+
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup',   up);
+  }
+
+  function _startJunctionDrag(e, junction) {
+    Drag.active = true;
+    const br = _canvas.getBoundingClientRect();
+    const vSegs = junction.segs.filter(s => s.dir === 'v');
+    const hSegs = junction.segs.filter(s => s.dir === 'h');
+
+    function move(e) {
+      const absX = e.clientX - br.left;
+      const absY = e.clientY - br.top;
+      vSegs.forEach(s => Drag.set(s.nodeId, (absX - s.rect.x) / s.rect.w));
+      hSegs.forEach(s => Drag.set(s.nodeId, (absY - s.rect.y) / s.rect.h));
+      render(Store.state);
+    }
+
+    function up() {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup',   up);
+      const updates = [];
+      [...vSegs, ...hSegs].forEach(s => {
+        if (Drag.overrides[s.nodeId] !== undefined)
+          updates.push({ nodeId: s.nodeId, ratio: Drag.overrides[s.nodeId] });
+      });
+      Drag.clear();
+      Drag.active = false;
+      if (updates.length) Store.dispatch({ type: 'SET_RATIOS', updates });
+      else render(Store.state);
+    }
+
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup',   up);
+  }
+
+  /* ── public ──────────────────────────────────── */
+
+  function _renderSelectionOverlay(selectedId, root, frag) {
+    if (!selectedId) return;
+    function findBounds(node, x, y, w, h) {
+      if (node.id === selectedId) return { x, y, w, h };
+      if (node.type !== 'split') return null;
+      const r = Drag.effective(node);
+      if (node.dir === 'h') {
+        const my = y + h * r;
+        return findBounds(node.children[0], x, y, w, my - y) ||
+               findBounds(node.children[1], x, my, w, (y + h) - my);
+      }
+      const mx = x + w * r;
+      return findBounds(node.children[0], x, y, mx - x, h) ||
+             findBounds(node.children[1], mx, y, (x + w) - mx, h);
+    }
+    const m = MARGIN;
+    const b = findBounds(root, m, m, _cW - 2*m, _cH - 2*m);
+    if (!b) return;
+    const el = document.createElement('div');
+    el.className = 'sel-overlay';
+    el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`;
+    frag.appendChild(el);
+  }
+
+  // ── Estado de drag/resize/rotate en modo libre ──────────────────
+  // _fdState sobrevive a los re-renders porque vive en la closure del Renderer.
+  // Los listeners de pointermove/pointerup se añaden a `document` (no al div),
+  // por eso tampoco se pierden cuando _canvas.innerHTML = '' destruye el div.
+  let _fdState  = null;   // { id, x?, y?, w?, h?, rot? } — override visual durante drag
+  let _fdActive = false;  // guard: evita que Store.subscribe dispare render durante drag
+  let _fdRafId  = null;   // ID de requestAnimationFrame para batching
+
+  function _fdRender() {
+    if (_fdRafId) return;
+    _fdRafId = requestAnimationFrame(() => {
+      _fdRafId = null;
+      render(Store.state);
+    });
+  }
+
+  // ── Renderizado del modo libre ───────────────────────────────
+  function _renderFree(state, frag) {
+    _canvas.classList.add('free-mode');
+    // El borde del canvas (#canvas) ya delimita el área de impresión — no necesitamos overlay adicional.
+
+    const sorted = [...(state.freeEls || [])].sort((a, b) => (a.z || 1) - (b.z || 1));
+
+    if (!sorted.length) {
+      const hint = document.createElement('div');
+      hint.className = 'free-drop-hint';
+      hint.textContent = 'Arrastra imágenes desde la galería';
+      frag.appendChild(hint);
+    }
+
+    for (const origEl of sorted) {
+      // live = origEl con override visual temporal aplicado si es el elemento activo
+      const live = (_fdState?.id === origEl.id) ? { ...origEl, ..._fdState } : origEl;
+
+      const x = live.x * _cW, y = live.y * _cH;
+      const w = live.w * _cW, h = live.h * _cH;
+      const isSel = state.selFreeId === origEl.id;
+
+      const div = document.createElement('div');
+      div.className = 'free-el' + (isSel ? ' sel' : '');
+      div.dataset.fid = origEl.id;
+      div.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;` +
+                          `z-index:${live.z||1};transform:rotate(${live.rot||0}deg);`;
+
+      // Imagen
+      if (origEl.imgId != null && origEl.imgId < IMAGES.length) {
+        const imgEl = document.createElement('img');
+        imgEl.src = IMAGES[origEl.imgId]?.src || '';
+        imgEl.draggable = false;
+        div.appendChild(imgEl);
+      }
+
+      // Botón eliminar (visible al hover/selección)
+      const del = document.createElement('button');
+      del.className = 'cell-del'; del.textContent = '✕';
+      del.addEventListener('pointerdown', e => e.stopPropagation());
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        const imgId = Store.state.freeEls.find(f => f.id === origEl.id)?.imgId;
+        if (imgId != null) setImageCount(imgId, Math.max(0, (IMAGE_COUNTS.get(imgId)||0) - 1));
+        Store.dispatch({ type: 'FREE_DEL', id: origEl.id });
+      });
+      div.appendChild(del);
+
+      // Handles de resize (visibles al seleccionar)
+      for (const corner of ['nw','ne','se','sw']) {
+        const rh = document.createElement('div');
+        rh.className = `free-rh free-rh-${corner}`;
+        // RESIZE: listeners en document — sobreviven a re-renders
+        rh.addEventListener('pointerdown', e => {
+          e.stopPropagation(); e.preventDefault();
+          _fdActive = true;
+          Store.dispatch({ type: 'FREE_SEL', id: origEl.id });
+          const { x: ox, y: oy, w: ow, h: oh } = origEl;
+          const startX = e.clientX, startY = e.clientY;
+
+          function onMove(ev) {
+            const dx = (ev.clientX - startX) / _cW;
+            const dy = (ev.clientY - startY) / _cH;
+            let nx=ox, ny=oy, nw=ow, nh=oh;
+            if (corner.includes('e')) nw = Math.min(1 - ox, Math.max(0.04, ow + dx));
+            if (corner.includes('s')) nh = Math.min(1 - oy, Math.max(0.04, oh + dy));
+            if (corner.includes('w')) {
+              const raw = Math.max(0.04, ow - dx);
+              nx = Math.max(0, ox + ow - raw);
+              nw = raw;
+            }
+            if (corner.includes('n')) {
+              const raw = Math.max(0.04, oh - dy);
+              ny = Math.max(0, oy + oh - raw);
+              nh = raw;
+            }
+            _fdState = { id: origEl.id, x: nx, y: ny, w: nw, h: nh };
+            _fdRender();
+          }
+          function onUp() {
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup',   onUp);
+            _fdActive = false;
+            if (_fdState) {
+              const { x, y, w, h } = _fdState;
+              Store.dispatch({ type: 'FREE_RESIZE', id: origEl.id, patch: {x,y,w,h} });
+              _fdState = null;
+            }
+          }
+          document.addEventListener('pointermove', onMove);
+          document.addEventListener('pointerup',   onUp);
+        });
+        div.appendChild(rh);
+      }
+
+      // Handle de rotación (visible al seleccionar, encima del elemento)
+      const rotH = document.createElement('div');
+      rotH.className = 'free-rot';
+      rotH.addEventListener('pointerdown', e => {
+        e.stopPropagation(); e.preventDefault();
+        _fdActive = true;
+        Store.dispatch({ type: 'FREE_SEL', id: origEl.id });
+        // Centro del elemento en coordenadas de pantalla
+        const canvasRect = _canvas.getBoundingClientRect();
+        const cx = (origEl.x + origEl.w / 2) * _cW + canvasRect.left;
+        const cy = (origEl.y + origEl.h / 2) * _cH + canvasRect.top;
+        const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+        const initRot = origEl.rot || 0;
+
+        function onMove(ev) {
+          const angle = Math.atan2(ev.clientY - cy, ev.clientX - cx);
+          let newRot = ((initRot + (angle - startAngle) * 180 / Math.PI) % 360 + 360) % 360;
+          if (ev.shiftKey) newRot = Math.round(newRot / 15) * 15;
+          _fdState = { id: origEl.id, rot: newRot };
+          _fdRender();
+        }
+        function onUp() {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup',   onUp);
+          _fdActive = false;
+          if (_fdState) {
+            Store.dispatch({ type: 'FREE_RESIZE', id: origEl.id,
+                             patch: { rot: _fdState.rot } });
+            _fdState = null;
+          }
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup',   onUp);
+      });
+      div.appendChild(rotH);
+
+
+      // MOVER: listeners en document — sobreviven a re-renders
+      div.addEventListener('pointerdown', e => {
+        if (e.target.classList.contains('free-rh') ||
+            e.target.classList.contains('free-rot') ||
+            e.target.classList.contains('cell-del')) return;
+        e.stopPropagation();
+        _fdActive = true;
+        Store.dispatch({ type: 'FREE_SEL',   id: origEl.id });
+        Store.dispatch({ type: 'FREE_FRONT', id: origEl.id });
+
+        const ox = origEl.x, oy = origEl.y;
+        const ow = origEl.w, oh = origEl.h;
+        const startX = e.clientX, startY = e.clientY;
+
+        function onMove(ev) {
+          // Sin clamping estricto — el elemento puede salir del canvas y queda recortado
+          const nx = ox + (ev.clientX - startX) / _cW;
+          const ny = oy + (ev.clientY - startY) / _cH;
+          _fdState = { id: origEl.id, x: nx, y: ny };
+          _fdRender();
+        }
+        function onUp() {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup',   onUp);
+          _fdActive = false;
+          if (_fdState) {
+            Store.dispatch({ type: 'FREE_MOVE', id: origEl.id,
+                             x: _fdState.x, y: _fdState.y });
+            _fdState = null;
+          }
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup',   onUp);
+      });
+
+      frag.appendChild(div);
+    }
+  }
+
+  function render(state) {
+    if (!_canvas) return;
+    MARGIN = Math.round((_cW + _cH) / 2 * MARGIN_PCT / 100);
+    const m = MARGIN;
+    const frag = document.createDocumentFragment();
+
+    if (state.freeMode) {
+      _renderFree(state, frag);
+    } else {
+      _canvas.classList.remove('free-mode');
+      _renderNode(state.root, m, m, _cW - 2*m, _cH - 2*m, frag);
+
+      if (state.root.type === 'leaf' && state.root.imageId === null) {
+        const ph = document.createElement('div');
+        ph.className = 'canvas-ph';
+        ph.innerHTML = `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="#bbb" stroke-width="1.5" stroke-linecap="round">
+          <rect x="4" y="4" width="28" height="28" rx="2"/>
+          <line x1="4" y1="18" x2="32" y2="18"/>
+          <line x1="18" y1="4" x2="18" y2="32"/>
+        </svg><span>Hover para dividir · Arrastra imágenes</span>`;
+        frag.appendChild(ph);
+      }
+
+      _renderJunctions(frag);
+      _renderSelectionOverlay(state.selectedId, state.root, frag);
+    }
+
+    _canvas.innerHTML = '';
+    _canvas.appendChild(frag);
+  }
+
+  function init(el) {
+    _canvas = el;
+    updateSize();
+  }
+
+  function updateSize() {
+    _cW = _canvas.clientWidth;
+    _cH = _canvas.clientHeight;
+  }
+
+  /**
+   * Recorre el árbol BSP actual y devuelve la posición/tamaño normalizada [0,1]
+   * de cada celda con imagen, listo para convertir a elementos libres.
+   */
+  function getLeafBounds() {
+    if (!_cW || !_cH) return [];
+    const m = MARGIN;
+    const leaves = [];
+
+    function collect(node, x, y, w, h) {
+      if (!node) return;
+      if (node.type === 'leaf') {
+        if (node.imageId != null) {
+          leaves.push({
+            imageId:  node.imageId,
+            rotation: node.rotation || 0,
+            x, y, w, h,
+          });
+        }
+        return;
+      }
+      // Usar el ratio almacenado (no el override de drag, que no está activo aquí)
+      const r = node.ratio;
+      if (node.dir === 'h') {
+        const my = y + h * r;
+        collect(node.children[0], x, y,  w, my - y);
+        collect(node.children[1], x, my, w, (y + h) - my);
+      } else {
+        const mx = x + w * r;
+        collect(node.children[0], x,  y, mx - x,     h);
+        collect(node.children[1], mx, y, (x + w) - mx, h);
+      }
+    }
+
+    collect(Store.state.root, m, m, _cW - 2 * m, _cH - 2 * m);
+
+    // Normalizar a coordenadas [0,1] del canvas completo
+    return leaves.map(l => ({
+      imageId:  l.imageId,
+      rotation: l.rotation,
+      x: l.x / _cW,
+      y: l.y / _cH,
+      w: l.w / _cW,
+      h: l.h / _cH,
+    }));
+  }
+
+  return { render, init, updateSize, freeDragActive: () => _fdActive, getLeafBounds };
+})();
+
+// ══════════════════════════════════════════════════════
+//  AUTO-LAYOUT ALGORITHM  — justified row packing
+// ══════════════════════════════════════════════════════
+
+/**
+ * Convierte un ratio decimal a la fracción entera más simple.
+ * Ej: 1.333 → [4,3], 0.75 → [3,4]
+ */
+function toNiceRatio(R) {
+  let bestW = 1, bestH = 1, bestErr = Infinity;
+  for (let d = 1; d <= 21; d++) {
+    const n = Math.round(R * d);
+    if (n < 1 || n > 30) continue;
+    const err = Math.abs(n / d - R);
+    if (err < bestErr) { bestErr = err; bestW = n; bestH = d; }
+  }
+  return [bestW, bestH];
+}
+
+/**
+ * Particiona imgs en k grupos minimizando la desviación de
+ * cada grupo respecto al ancho objetivo (totalW / k).
+ */
+function greedyPartition(imgs, k) {
+  const n = imgs.length;
+  if (k >= n) return imgs.map(img => [img]);
+  if (k === 1) return [[...imgs]];
+
+  const totalW   = imgs.reduce((s, img) => s + img.ratio, 0);
+  const targetW  = totalW / k;
+  const rows     = [[]];
+  let   rowW     = 0;
+
+  for (let i = 0; i < n; i++) {
+    const w       = imgs[i].ratio;
+    const remImgs = n - i;
+    const remRows = k - rows.length;
+
+    // Forzar nueva fila si cada fila restante debe tener al menos una imagen
+    const mustBreak = remRows > 0 && remImgs <= remRows && rows[rows.length - 1].length > 0;
+    // Romper si añadir esta imagen nos aleja más del target
+    const wantBreak = rows.length < k && rowW > 0 && remImgs > remRows &&
+                      Math.abs(rowW - targetW) <= Math.abs(rowW + w - targetW);
+
+    if (mustBreak || wantBreak) { rows.push([]); rowW = 0; }
+    rows[rows.length - 1].push(imgs[i]);
+    rowW += w;
+  }
+  return rows;
+}
+
+/** Construye la rama de V-splits para los imágenes de una fila. */
+function buildRowBSP(rowImgs) {
+  if (rowImgs.length === 0) return PM.leaf();
+  if (rowImgs.length === 1) return PM.leaf(rowImgs[0].id);
+  const totalW = rowImgs.reduce((s, img) => s + (img.ratio || 1), 0) || 1;
+  return {
+    id: uid(), type: 'split', dir: 'v',
+    ratio: clamp((rowImgs[0].ratio || 1) / totalW, 0.08, 0.92),
+    children: [PM.leaf(rowImgs[0].id), buildRowBSP(rowImgs.slice(1))]
+  };
+}
+
+/** Construye la espina de H-splits para múltiples filas. normH debe sumar 1. */
+function buildRowsBSP(rows, normH) {
+  if (rows.length === 1) return buildRowBSP(rows[0]);
+  const h0      = normH[0];
+  const restSum = normH.slice(1).reduce((a, b) => a + b, 0);
+  const restN   = restSum > 0
+    ? normH.slice(1).map(h => h / restSum)
+    : normH.slice(1).map(() => 1 / (normH.length - 1));
+  return {
+    id: uid(), type: 'split', dir: 'h',
+    ratio: clamp(h0, 0.08, 0.92),
+    children: [buildRowBSP(rows[0]), buildRowsBSP(rows.slice(1), restN)]
+  };
+}
+
+/**
+ * Como buildRowsBSP pero SIN clamp en los H-splits.
+ * Con muchas filas (>12) el clamp 0.08–0.92 distorsiona las alturas
+ * exponencialmente. Esta versión usa las alturas reales en px.
+ */
+function buildPanoramaRows(rows, rowHs) {
+  const totalH = rowHs.reduce((a, b) => a + b, 0);
+  function build(rs, hs, usedH) {
+    if (rs.length === 1) return buildRowBSP(rs[0]);
+    const remain = totalH - usedH;
+    const ratio  = remain > 0 ? hs[0] / remain : 0.5;
+    return {
+      id: uid(), type: 'split', dir: 'h',
+      ratio: Math.max(0.001, Math.min(0.999, ratio)),
+      children: [buildRowBSP(rs[0]), build(rs.slice(1), hs.slice(1), usedH + hs[0])]
+    };
+  }
+  return build(rows, rowHs, 0);
+}
+
+/**
+ * Dado un array de imágenes con .ratio (w/h), calcula el árbol BSP
+ * que minimiza el espacio en blanco usando filas justificadas.
+ *
+ * Para cualquier partición en k filas con sumas S_j, el ratio ideal del
+ * canvas es R = 1/∑(1/S_j) → espacio en blanco = 0 exacto.
+ * Se prueban todos los k posibles y se elige el que produce filas más
+ * equilibradas (menor varianza de alturas normalizadas).
+ *
+ * Retorna { root, R } donde R es el ratio óptimo (ancho/alto).
+ */
+function computeAutoLayout(imgs, targetR = 7.5 / 10.5) {
+  if (!imgs.length) return { root: PM.leaf(), R: targetR || 0.75 };
+  if (imgs.length === 1) return { root: PM.leaf(imgs[0].id), R: targetR || 1 };
+
+  const n = imgs.length;
+  let bestResult = null, bestScore = Infinity;
+
+  for (let k = 1; k <= n; k++) {
+    const rows  = greedyPartition(imgs, k);
+    const invS  = rows.map(row => {
+      const S = row.reduce((s, img) => s + (img.ratio || 1), 0);
+      return S > 0 ? 1 / S : 1;
+    });
+    const sumInvS = invS.reduce((a, b) => a + b, 0);
+    const idealR  = sumInvS > 0 ? 1 / sumInvS : 0.75;
+
+    // Balance: varianza de las alturas normalizadas (menor = mejor)
+    const sumInv = sumInvS || 1;
+    const meanH  = 1 / k;
+    const variance = invS.reduce((s, inv) => {
+      const h = inv / sumInv;
+      return s + (h - meanH) ** 2;
+    }, 0);
+
+    // Si hay proporción objetivo: penalizar desviación (criterio principal)
+    // Si es Libre (targetR=0): solo minimizar varianza de alturas
+    const score = targetR > 0
+      ? Math.abs(Math.log(idealR / targetR)) * 5 + variance
+      : variance;
+
+    if (score < bestScore) {
+      bestScore  = score;
+      bestResult = { rows, idealR, invS, sumInvS };
+    }
+  }
+
+  const { rows, idealR, invS, sumInvS } = bestResult;
+  const normH = invS.map(inv => inv / (sumInvS || 1));
+
+  return { root: buildRowsBSP(rows, normH), R: idealR };
+}
+
+// ══════════════════════════════════════════════════════
+//  AUTO-LAYOUT UI
+// ══════════════════════════════════════════════════════
+const AutoLayout = (() => {
+
+  /**
+   * Motor central del layout — versión original.
+   *
+   * Modo generar (noShuffle=false):
+   *   targetR = availW/availH — el canvas se adapta al ratio natural → cero espacios blancos.
+   *
+   * Refit (noShuffle=true):
+   *   targetR = PROP_W/PROP_H, NO actualiza PROP_W/PROP_H.
+   */
+  function _applyLayout(imgs, noShuffle = false) {
+    const input   = noShuffle ? imgs : shuffleArray(imgs);
+    const n       = input.length;
+    const wrapper = document.getElementById('canvas-wrapper');
+    const availW  = Math.max(wrapper.clientWidth  - 44, 200);
+    const availH  = Math.max(wrapper.clientHeight - 44, 200);
+
+    // Ratio objetivo: en generación usa el espacio disponible; en refit mantiene la proporción actual
+    const targetR = noShuffle ? (PROP_W / PROP_H) : (availW / availH);
+
+    // Probar k=1..n filas, elegir la que minimiza desviación de targetR + varianza de alturas
+    let bestRows = [input], bestScore = Infinity;
+    for (let k = 1; k <= n; k++) {
+      const rows   = greedyPartition(input, k);
+      const invS   = rows.map(row => {
+        const S = row.reduce((s, img) => s + Math.max(0.1, img.ratio || 1), 0);
+        return S > 0 ? 1 / S : 1;
+      });
+      const sumInvS = invS.reduce((a, b) => a + b, 0);
+      const idealR  = sumInvS > 0 ? 1 / sumInvS : targetR;
+      const sumInv  = sumInvS || 1;
+      const meanH   = 1 / k;
+      const variance = invS.reduce((s, inv) => s + (inv / sumInv - meanH) ** 2, 0);
+      const score   = Math.abs(Math.log(Math.max(idealR, 0.001) / Math.max(targetR, 0.001))) * 5 + variance;
+      if (score < bestScore) { bestScore = score; bestRows = rows; }
+    }
+
+    const rowSums  = bestRows.map(row => row.reduce((s, img) => s + Math.max(0.1, img.ratio || 1), 0));
+    const invSums  = rowSums.map(S => S > 0 ? 1 / S : 1);
+    const totalInv = invSums.reduce((a, b) => a + b, 0);
+    const normH    = invSums.map(inv => inv / (totalInv || 1));
+
+    // En generación: actualizar canvas al ratio natural (cero espacios blancos)
+    if (!noShuffle) {
+      const naturalR = totalInv > 0 ? 1 / totalInv : targetR;
+      const [nW, nH] = toNiceRatio(naturalR);
+      PROP_W = nW; PROP_H = nH;
+    }
+
+    _panoramaH = 0;
+    wrapper.classList.remove('panorama');
+    _sizeCanvas();
+    Store.dispatch({ type: 'SET_ROOT', root: buildRowsBSP(bestRows, normH) });
+  }
+
+  function vary() {
+    try { _applyLayout(_imgsFromCounts()); }
+    catch (err) { console.error('Auto-layout error:', err); }
+  }
+
+  function generateDirect(imgs) {
+    try { _applyLayout(imgs.length ? imgs : _imgsFromCounts()); }
+    catch (err) { console.error('Auto-layout error:', err); }
+  }
+
+  /** Refit: mismo orden de imágenes, canvas mantiene proporción actual. */
+  function refit() {
+    if (!IMAGE_COUNTS.size) { fitCanvas(); return; }
+    try { _applyLayout(_imgsFromCounts(), true); }
+    catch (err) { console.error('Refit error:', err); }
+  }
+
+  /** refitFixed: alias de refit (compatibilidad con el handler del drag). */
+  function refitFixed() { refit(); }
+
+  return { vary, generateDirect, refit, refitFixed };
+})();
+
+// ══════════════════════════════════════════════════════
+//  LOCKED-CELL GENERATE
+// ══════════════════════════════════════════════════════
+
+/** Builds an H-split spine from an ordered array of {bsp, heightPx}. */
+function _buildSpine(rows) {
+  if (rows.length === 0) return PM.leaf();
+  if (rows.length === 1) return rows[0].bsp;
+  const totalH = rows.reduce((s, r) => s + r.heightPx, 0);
+  function build(rs, usedH) {
+    if (rs.length === 1) return rs[0].bsp;
+    const remain = totalH - usedH;
+    const ratio  = remain > 0 ? rs[0].heightPx / remain : 0.5;
+    return {
+      id: uid(), type: 'split', dir: 'h',
+      ratio: Math.max(0.001, Math.min(0.999, ratio)),
+      children: [rs[0].bsp, build(rs.slice(1), usedH + rs[0].heightPx)]
+    };
+  }
+  return build(rows, 0);
+}
+
+/**
+ * Like AutoLayout.generateDirect() but preserves rows that contain locked images.
+ * Non-locked images are re-laid out in the remaining vertical space.
+ */
+function _generateWithLocks() {
+  const canvas  = document.getElementById('canvas');
+  const canvasH = canvas.clientHeight || 400;
+
+  // Walk the H-split spine to extract ordered rows with pixel heights
+  const rows = [];
+  function extractRows(node, heightPx) {
+    if (node.type !== 'split' || node.dir !== 'h') {
+      rows.push({ bsp: node, heightPx });
+    } else {
+      extractRows(node.children[0], heightPx * node.ratio);
+      extractRows(node.children[1], heightPx * (1 - node.ratio));
+    }
+  }
+  extractRows(Store.state.root, canvasH);
+
+  // Collect imageIds inside a row's BSP
+  function rowImageIds(bsp) {
+    const ids = [];
+    function walk(n) {
+      if (n.type === 'leaf') { if (n.imageId !== null) ids.push(n.imageId); }
+      else { walk(n.children[0]); walk(n.children[1]); }
+    }
+    walk(bsp);
+    return ids;
+  }
+
+  // Annotate each row: is it locked?
+  const lockedImageIdsInRows = new Set();
+  const annotated = rows.map(row => {
+    const imgIds = rowImageIds(row.bsp);
+    const isLocked = imgIds.some(id => LOCKED_IMAGES.has(id));
+    if (isLocked) imgIds.forEach(id => lockedImageIdsInRows.add(id));
+    return { ...row, imgIds, isLocked };
+  });
+
+  if (!annotated.some(r => r.isLocked)) { AutoLayout.generateDirect([]); return; }
+
+  // Build pool of non-locked images
+  const pool = [];
+  IMAGE_COUNTS.forEach((count, id) => {
+    if (!lockedImageIdsInRows.has(id)) {
+      const img = IMAGES[id];
+      if (img) for (let i = 0; i < count; i++)
+        pool.push({ ...img, ratio: Math.max(0.1, _effectiveRatio(img)) });
+    }
+  });
+
+  const lockedH = annotated.filter(r => r.isLocked).reduce((s, r) => s + r.heightPx, 0);
+  const freeH   = Math.max(50, canvasH - lockedH);
+  const wrapper = document.getElementById('canvas-wrapper');
+  const availW  = Math.max(wrapper.clientWidth - 44, 200);
+
+  // Find best k rows for the non-locked pool to fill freeH
+  let newRows = pool.length ? [pool] : [];
+  if (pool.length > 1) {
+    const shuffled = shuffleArray(pool);
+    let bestScore = Infinity;
+    for (let k = 1; k <= shuffled.length; k++) {
+      const rs   = greedyPartition(shuffled, k);
+      const invS = rs.map(r => { const S = r.reduce((s, i) => s + i.ratio, 0); return S > 0 ? 1/S : 1; });
+      const idealH = availW * invS.reduce((a, b) => a + b, 0);
+      const score  = Math.abs(idealH - freeH) / freeH;
+      if (score < bestScore) { bestScore = score; newRows = rs; }
+    }
+  }
+
+  // Heights for each new row
+  const newRowHs = newRows.map(r => {
+    const S = r.reduce((s, i) => s + i.ratio, 0);
+    return S > 0 ? availW / S : freeH / Math.max(1, newRows.length);
+  });
+  const newRowHTotal = newRowHs.reduce((a, b) => a + b, 0);
+  const normNewHs = newRowHs.map(h => h / newRowHTotal * freeH);
+
+  // Interleave locked rows and new rows (distribute new rows across unlocked slots)
+  let newRowIdx = 0;
+  const unlockedCount = annotated.filter(r => !r.isLocked).length;
+  const newRowsPerSlot = unlockedCount > 0 ? Math.floor(newRows.length / unlockedCount) : 0;
+  const newRowsExtra   = unlockedCount > 0 ? newRows.length % unlockedCount : 0;
+
+  const finalRows = [];
+  let extraGiven = 0;
+  annotated.forEach(row => {
+    if (row.isLocked) {
+      finalRows.push({ bsp: row.bsp, heightPx: row.heightPx });
+    } else {
+      const take = newRowsPerSlot + (extraGiven < newRowsExtra ? 1 : 0);
+      if (extraGiven < newRowsExtra) extraGiven++;
+      for (let i = 0; i < take && newRowIdx < newRows.length; i++, newRowIdx++) {
+        finalRows.push({ bsp: buildRowBSP(newRows[newRowIdx]), heightPx: normNewHs[newRowIdx] });
+      }
+    }
+  });
+  // Any leftover rows go at the end
+  while (newRowIdx < newRows.length) {
+    finalRows.push({ bsp: buildRowBSP(newRows[newRowIdx]), heightPx: normNewHs[newRowIdx] });
+    newRowIdx++;
+  }
+
+  // If nothing to show, fall through to normal generate
+  if (finalRows.length === 0) { AutoLayout.generateDirect([]); return; }
+
+  // Apply new layout — canvas dimensions unchanged; just update the BSP
+  if (finalRows.length === 0) { AutoLayout.generateDirect([]); return; }
+  Renderer.updateSize();
+  Store.dispatch({ type: 'SET_ROOT', root: _buildSpine(finalRows) });
+}
+
+// ══════════════════════════════════════════════════════
+//  3D T-SHIRT PREVIEW
+// ══════════════════════════════════════════════════════
+const TshirtPreview = (() => {
+  const GLB_URL  = 'https://raw.githubusercontent.com/Starklord17/threejs-t-shirt/main/public/shirt_baked.glb';
+  const LOGO_URL = 'images/logoPanel.svg';
+
+  let _ren, _scene, _cam, _ctrl, _printTex, _printCanvas, _printCtx;
+  let _maxAniso = 1;
+  let _decalMesh  = null;
+  let _printPlane = null;
+  let _shirtMeshRef = null;
+  let _shirtMats = [], _shirtColor = '#f2f2f2';
+  let _panelRotDeg = 0;
+  let _offX = 0, _offY = 0;
+  let _baseY = -0.28, _printZ = 0.057;
+  let _printMaxW = 0.94, _printMaxH = 1.10;
+  // Dimensiones del modelo de camisa en world-units (actualizadas al cargar el GLB)
+  let _shirtW = 2.47, _shirtH = 2.5, _shirtCY = -0.655;
+  let _printScale = 1.0;
+  let _waistY = -0.83;   // Y mundial de la cintura — actualizado al cargar el modelo
+  let _lastPropW = -1, _lastPropH = -1;
+  let _useDecal = false;
+  let _shirtDepth = 0.4;  // shirt Z depth, updated from bounding box
+
+  let _maleModel = null, _maleMeshRef = null;
+  let _miniRen = null, _miniCam = null;
+
+  // ── Logo en la parte superior izquierda ─────────────────────────
+  const _logoCanvas = document.createElement('canvas');
+  const _logoCtx    = _logoCanvas.getContext('2d');
+  let _logoImg  = null, _logoTex  = null, _logoMesh = null;
+  let _logoFilter = 'none';
+
+  // ── Resize canvas to panel proportions (no distortion) ──────────
+  function _resizePrintCanvas() {
+    const SCALE = 150;   // alta resolución → sin pérdida de calidad al hacer zoom
+    let w, h;
+    if (Store.state.freeMode) {
+      // Modo libre: el canvas de textura cubre la superficie de impresión completa
+      const refH = Math.round((PROP_H || 11) * SCALE);   // mantener resolución vertical
+      h = refH;
+      w = Math.round(refH * _printMaxW / _printMaxH);
+    } else {
+      w = Math.round((PROP_W || 7)  * SCALE);
+      h = Math.round((PROP_H || 11) * SCALE);
+    }
+    if (_printCanvas.width !== w || _printCanvas.height !== h) {
+      _printCanvas.width  = w;
+      _printCanvas.height = h;
+    }
+  }
+
+  // ── BSP tree walker → draws panel onto canvas ────────────────────
+  function _bsp(ctx, node, x, y, w, h) {
+    if (node.type === 'leaf') {
+      if (node.imageId !== null) {
+        const img = document.querySelector(`.thumb[data-img-id="${node.imageId}"] img`);
+        if (img && img.complete && img.naturalWidth) {
+          const totalDeg = ((node.rotation || 0) + (IMAGES[node.imageId]?.rotation || 0)) % 360;
+          const θ = totalDeg * Math.PI / 180;
+          const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+          const iW = img.naturalWidth, iH = img.naturalHeight;
+          // scale so the rotated bounding box fits the cell (works for any angle)
+          const scale = Math.min(w / (iW * cosT + iH * sinT), h / (iW * sinT + iH * cosT));
+          const dw = iW * scale, dh = iH * scale;
+          const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, y, w, h);
+          ctx.clip();
+          const cx = x + w / 2, cy = y + h / 2;
+          if (totalDeg) {
+            ctx.translate(cx, cy);
+            ctx.rotate(θ);
+            ctx.translate(-cx, -cy);
+          }
+          const needsInvert = getComputedStyle(document.documentElement)
+            .getPropertyValue('--img-filter').trim() === 'invert(1)';
+          try {
+            ctx.drawImage(img, dx, dy, dw, dh);
+            if (needsInvert) {
+              const id = ctx.getImageData(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
+              const d = id.data;
+              for (let i = 0; i < d.length; i += 4) {
+                d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2];
+              }
+              ctx.putImageData(id, Math.round(x), Math.round(y));
+            }
+          } catch(e) { /* tainted */ }
+          ctx.restore();
+        }
+      }
+    } else {
+      const r = node.ratio;
+      if (node.dir === 'h') {
+        _bsp(ctx, node.children[0], x, y,     w, h*r);
+        _bsp(ctx, node.children[1], x, y+h*r, w, h*(1-r));
+      } else {
+        _bsp(ctx, node.children[0], x,     y, w*r,     h);
+        _bsp(ctx, node.children[1], x+w*r, y, w*(1-r), h);
+      }
+    }
+  }
+
+  // ── Redraw print texture (transparent background = shirt shows through) ─
+  function redrawPrint(state) {
+    if (!_printCtx || !_printTex) return;
+    _resizePrintCanvas();
+    state = state || Store.state;
+    const W = _printCanvas.width, H = _printCanvas.height;
+    _printCtx.clearRect(0, 0, W, H);
+
+    if (state.freeMode && state.freeEls?.length) {
+      // Modo libre: contener la imagen (contain) igual que en modo panel.
+      // Esto garantiza que la camiseta muestre exactamente lo mismo que el canvas 2D.
+      const sorted = [...state.freeEls].sort((a, b) => (a.z || 1) - (b.z || 1));
+      for (const el of sorted) {
+        const domImg = document.querySelector(`.thumb[data-img-id="${el.imgId}"] img`);
+        if (!domImg || !domImg.complete || !domImg.naturalWidth) continue;
+
+        const cx = el.x * W, cy = el.y * H, cw = el.w * W, ch = el.h * H;
+        const iW = domImg.naturalWidth, iH = domImg.naturalHeight;
+        const rot = ((el.rot || 0) + (IMAGES[el.imgId]?.rotation || 0)) % 360;
+        const θ = rot * Math.PI / 180;
+        const sinT = Math.abs(Math.sin(θ)), cosT = Math.abs(Math.cos(θ));
+
+        // contain: escalar para que la imagen quepa completamente en la celda
+        const scale = Math.min(cw / (iW * cosT + iH * sinT),
+                               ch / (iW * sinT + iH * cosT));
+        const dw = iW * scale, dh = iH * scale;
+        const dx = cx + (cw - dw) / 2, dy = cy + (ch - dh) / 2;
+
+        _printCtx.save();
+        _printCtx.beginPath();
+        _printCtx.rect(cx, cy, cw, ch);
+        _printCtx.clip();
+        _printCtx.translate(cx + cw / 2, cy + ch / 2);
+        if (rot) _printCtx.rotate(θ);
+        _printCtx.drawImage(domImg, -dw / 2, -dh / 2, dw, dh);
+        _printCtx.restore();
+      }
+    } else {
+      const avg = (W + H) / 2;
+      const m   = Math.round(avg * MARGIN_PCT / 100);
+      _bsp(_printCtx, state.root, m, m, W - 2*m, H - 2*m);
+    }
+
+    // ── Máscara de cintura: borra la zona del canvas que queda por debajo de _waistY ──
+    // Canvas Y=0 = borde superior del estampado (mayor Y en mundo)
+    // Canvas Y=H = borde inferior del estampado (menor Y en mundo)
+    const ph = _printMaxH * _printScale;
+    if (ph > 0 && _waistY !== undefined) {
+      const printTop      = _baseY + _offY + ph / 2;
+      const canvasYWaist  = (printTop - _waistY) / ph * H;
+      if (canvasYWaist < H) {
+        _printCtx.clearRect(0, Math.max(0, canvasYWaist), W, H);
+      }
+    }
+
+    _printTex.needsUpdate = true;
+  }
+
+  // ── Compute decal/plane dimensions from current proportion ───────
+  function _getDecalDims() {
+    if (Store.state.freeMode) {
+      // Modo libre: el decal cubre la superficie de impresión completa
+      return { pw: _printMaxW * _printScale, ph: _printMaxH * _printScale };
+    }
+    const asp = (PROP_W > 0 && PROP_H > 0) ? PROP_W / PROP_H : 1;
+    const mw = _printMaxW * _printScale, mh = _printMaxH * _printScale;
+    let pw, ph;
+    if (asp > mw / mh) { pw = mw; ph = mw / asp; }
+    else               { ph = mh; pw = mh * asp; }
+    return { pw, ph };
+  }
+
+  // ── Rebuild DecalGeometry (called on prop/position changes) ──────
+  function _rebuildDecal() {
+    if (!_useDecal || !_shirtMeshRef || !THREE.DecalGeometry) return;
+
+    if (_decalMesh) {
+      _scene.remove(_decalMesh);
+      _decalMesh.geometry.dispose();
+      _decalMesh = null;
+    }
+
+    const { pw, ph } = _getDecalDims();
+    // Ensure world matrix is current before DecalGeometry projection
+    _shirtMeshRef.updateWorldMatrix(true, false);
+    const pos  = new THREE.Vector3(_offX, _baseY + _offY, _printZ);
+    const ori  = new THREE.Euler(0, 0, _panelRotDeg * Math.PI / 180);
+    // Depth limitado a ~20% del grosor de la camisa para no sangrar a los laterales ni al frente
+    const size = new THREE.Vector3(pw, ph, _shirtDepth * 0.20);
+
+    try {
+      _decalMesh = new THREE.Mesh(
+        new THREE.DecalGeometry(_shirtMeshRef, pos, ori, size),
+        new THREE.MeshBasicMaterial({
+          map: _printTex, transparent: true,
+          depthTest: true, depthWrite: false,
+          polygonOffset: true, polygonOffsetFactor: -4,
+        })
+      );
+      _scene.add(_decalMesh);
+    } catch (e) {
+      console.warn('DecalGeometry failed, reverting to plane:', e);
+      _useDecal = false;
+      _setupPrintPlane();
+    }
+  }
+
+  // ── Plane fallback (used when DecalGeometry unavailable/fails) ───
+  function _setupPrintPlane() {
+    if (_printPlane) return;
+    _printPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ map: _printTex, transparent: true, depthWrite: false,
+      })
+    );
+    _printPlane.position.set(0, _baseY, _printZ);
+    _scene.add(_printPlane);
+    _updatePlaneScale();
+  }
+
+  function _updatePlaneScale() {
+    if (!_printPlane) return;
+    const { pw, ph } = _getDecalDims();
+    _printPlane.scale.set(pw, ph, 1);
+    _printPlane.position.x = _offX;
+    _printPlane.position.y = _baseY + _offY;
+    _printPlane.rotation.z = _panelRotDeg * Math.PI / 180;
+  }
+
+  // ── Called by Store.subscribe — rebuilds when ratio or mode changes ─
+  let _lastFreeMode = false;
+  function _updatePrintScale() {
+    const modeChanged = Store.state.freeMode !== _lastFreeMode;
+    if (!modeChanged && PROP_W === _lastPropW && PROP_H === _lastPropH) return;
+    _lastPropW = PROP_W; _lastPropH = PROP_H;
+    _lastFreeMode = Store.state.freeMode;
+    if (_useDecal) _rebuildDecal();
+    else           _updatePlaneScale();
+  }
+
+  // ── Logo superior izquierdo ──────────────────────────────────────
+  function _drawLogo() {
+    if (!_logoImg) return;
+    const w = _logoCanvas.width, h = _logoCanvas.height;
+    _logoCtx.clearRect(0, 0, w, h);
+    _logoCtx.drawImage(_logoImg, 0, 0, w, h);
+    if (_logoFilter === 'invert(1)') {
+      const id = _logoCtx.getImageData(0, 0, w, h);
+      const d = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i] = 255 - d[i]; d[i+1] = 255 - d[i+1]; d[i+2] = 255 - d[i+2];
+      }
+      _logoCtx.putImageData(id, 0, 0);
+    }
+    if (_logoTex) _logoTex.needsUpdate = true;
+  }
+
+  // Saved logo layout params for fallback rebuild
+  let _logoBox = null, _logoSz = null, _logoCenter = null;
+
+  function _setupLogo(box, size, center) {
+    _logoBox = box; _logoSz = size; _logoCenter = center;
+    const img = new Image();
+    img.onload = () => {
+      _logoImg = img;
+      const asp = img.naturalWidth / img.naturalHeight || 1;
+      _logoCanvas.width  = 256;
+      _logoCanvas.height = Math.max(1, Math.round(256 / asp));
+      _logoTex = new THREE.CanvasTexture(_logoCanvas);
+      _logoTex.anisotropy = _maxAniso;
+      _drawLogo();
+      _buildLogoMesh();
+    };
+    img.onerror = () => {};
+    img.src = LOGO_URL;
+  }
+
+  function _buildLogoMesh() {
+    if (!_logoTex || !_logoBox) return;
+    const box = _logoBox, size = _logoSz, center = _logoCenter;
+    const asp = _logoCanvas.width / Math.max(1, _logoCanvas.height);
+
+    // Tamaño: parche pequeño en el pecho (~15% del ancho de la camisa)
+    const lw = size.x * 0.15;
+    const lh = lw / asp;
+
+    // Posición: pecho derecho del portador, parte frontal.
+    // Tras model.rotation.y=π: frente = box.min.z, portador-derecha = -X world.
+    const lx = -(box.max.x * 0.30);
+    const ly = center.y  + size.y * 0.20;
+    const lz = box.min.z;
+
+    if (_logoMesh) { _scene.remove(_logoMesh); _logoMesh.geometry.dispose(); _logoMesh = null; }
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: _logoTex, transparent: true,
+      depthTest: true, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -6,
+    });
+
+    if (_useDecal && _shirtMeshRef && THREE.DecalGeometry) {
+      _shirtMeshRef.updateWorldMatrix(true, false);
+      const pos     = new THREE.Vector3(lx, ly, lz);
+      const ori     = new THREE.Euler(0, Math.PI, 0); // normal hacia -Z (frente de camisa)
+      const decSize = new THREE.Vector3(lw, lh, size.z * 0.4);
+      try {
+        _logoMesh = new THREE.Mesh(new THREE.DecalGeometry(_shirtMeshRef, pos, ori, decSize), mat);
+        _scene.add(_logoMesh);
+        return;
+      } catch(e) {
+        console.warn('Logo DecalGeometry failed, using plane:', e);
+      }
+    }
+
+    // Fallback: plano flotante
+    _logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    _logoMesh.rotation.y = Math.PI;
+    _logoMesh.scale.set(lw, lh, 1);
+    _logoMesh.position.set(lx, ly, lz - 0.003);
+    _scene.add(_logoMesh);
+  }
+
+  function setLogoFilter(filter) {
+    _logoFilter = filter;
+    _drawLogo();
+  }
+
+  // ── Fallback procedural shirt ────────────────────────────────────
+  function _buildFallbackShirt(err) {
+    if (err) console.warn('GLB load failed, using fallback shirt:', err);
+    const s = new THREE.Shape();
+    const bw=1.0, bb=-1.4, sy=0.55, sw_=0.50, sty=0.30, cy=1.0, cw=0.22, cd=0.20;
+    s.moveTo(-bw, bb); s.lineTo( bw, bb); s.lineTo( bw, sy);
+    s.lineTo( bw+sw_, sy-0.04); s.lineTo( bw+sw_, sy-0.04+sty);
+    s.lineTo( bw,    sy+sty-0.09); s.lineTo( cw, cy);
+    s.bezierCurveTo(cw, cy-cd, -cw, cy-cd, -cw, cy);
+    s.lineTo(-bw, sy+sty-0.09); s.lineTo(-bw-sw_, sy-0.04+sty);
+    s.lineTo(-bw-sw_, sy-0.04); s.lineTo(-bw, sy); s.lineTo(-bw, bb);
+    _shirtMats = [];
+    const _fbMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(_shirtColor), roughness: 0.85, metalness: 0.0
+    });
+    _shirtMats.push(_fbMat);
+    const shirt = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: false }), _fbMat
+    );
+    _scene.add(shirt);
+    _baseY = -0.28; _printZ = 0.062; _printMaxW = 0.94; _printMaxH = 1.10;
+    _shirtW = 2.47; _shirtH = 2.50; _shirtCY = -0.655;
+    _useDecal = false;
+    _setupPrintPlane();
+    document.getElementById('tshirt-loading').style.display = 'none';
+    redrawPrint(Store.state);
+  }
+
+  // ── Main init ─────────────────────────────────────────────────────
+  function init() {
+    const vp = document.getElementById('tshirt-viewport');
+    if (!vp || !window.THREE) return;
+
+    _printCanvas = document.createElement('canvas');
+    _printCanvas.width = 1050; _printCanvas.height = 1650;  // 7×11 × 150px
+    _printCtx = _printCanvas.getContext('2d');
+
+    _scene = new THREE.Scene();
+    _scene.background = new THREE.Color(0xdadada);
+
+    const W = vp.clientWidth || 500, H = vp.clientHeight || 600;
+    _cam = new THREE.PerspectiveCamera(34, W / H, 0.05, 100);
+    _cam.position.set(0, 0.1, 1.3);   // ~3× más cerca
+
+    _ren = new THREE.WebGLRenderer({ antialias: true });
+    _ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    _ren.setSize(W, H);
+    vp.appendChild(_ren.domElement);
+    _maxAniso = _ren.capabilities.getMaxAnisotropy();
+
+    // Key desde el frente del modelo (world -Z), posiciones ajustadas
+    _scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const key = new THREE.DirectionalLight(0xffffff, 0.5);
+    key.position.set(1, 3, -5); _scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+    fill.position.set(-2, 0.5, 3); _scene.add(fill);
+
+    _printTex = new THREE.CanvasTexture(_printCanvas);
+    _printTex.anisotropy   = _maxAniso;
+    _printTex.magFilter    = THREE.LinearFilter;
+    _printTex.minFilter    = THREE.LinearMipmapLinearFilter;
+    _printTex.generateMipmaps = true;
+
+    _ctrl = new THREE.OrbitControls(_cam, _ren.domElement);
+    _ctrl.enablePan = false;
+    _ctrl.minDistance = 0.12;   // permite zoom muy cercano
+    _ctrl.maxDistance = 10;
+    _ctrl.enableDamping = true;
+    _ctrl.dampingFactor = 0.06;
+    _ctrl.target.set(0, 0, 0);
+    _ctrl.update();
+
+    // Mini secondary view (opposite side)
+    const miniCanvas = document.getElementById('tshirt-mini');
+    if (miniCanvas) {
+      _miniRen = new THREE.WebGLRenderer({ canvas: miniCanvas, antialias: true, alpha: false });
+      _miniRen.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      _miniRen.setSize(miniCanvas.clientWidth || 110, miniCanvas.clientHeight || 140);
+      _miniRen.setClearColor(0xdadada, 1);
+      const mW = miniCanvas.clientWidth || 110, mH = miniCanvas.clientHeight || 140;
+      _miniCam = new THREE.PerspectiveCamera(34, mW / mH, 0.05, 100);
+    }
+
+    (function loop() {
+      requestAnimationFrame(loop);
+      _ctrl.update();
+      _ren.render(_scene, _cam);
+      // Mini view: camera at antipodal position (flip X and Z relative to target)
+      if (_miniRen && _miniCam) {
+        const t = _ctrl.target;
+        const dx = _cam.position.x - t.x;
+        const dy = _cam.position.y - t.y;
+        const dz = _cam.position.z - t.z;
+        _miniCam.position.set(t.x - dx, t.y + dy, t.z - dz);
+        _miniCam.lookAt(t);
+        _miniRen.render(_scene, _miniCam);
+      }
+    })();
+
+    // Load GLB
+    if (window.THREE && THREE.GLTFLoader) {
+      const loader = new THREE.GLTFLoader();
+      loader.load(GLB_URL, gltf => {
+        const model = gltf.scene;
+        model.rotation.y = Math.PI;   // back toward camera
+
+        _shirtMats = [];
+        model.traverse(child => {
+          if (child.isMesh) {
+            const mat = new THREE.MeshStandardMaterial({
+              color: new THREE.Color(_shirtColor), roughness: 0.85, metalness: 0.0,
+            });
+            child.material = mat;
+            _shirtMats.push(mat);
+          }
+        });
+        _maleModel = model;
+        _scene.add(model);
+
+        // Derive print bounds from bounding box
+        const box    = new THREE.Box3().setFromObject(model);
+        const center = new THREE.Vector3();
+        const size   = new THREE.Vector3();
+        box.getCenter(center); box.getSize(size);
+        _baseY      = center.y + size.y * 0.15;
+        _printZ     = box.max.z - size.z * 0.05;
+        _shirtDepth = size.z;
+        // Dimensiones reales del modelo para proyección 2D
+        _shirtW  = size.x;
+        _shirtH  = size.y;
+        _shirtCY = center.y;
+        // Limitar el área de estampado al panel trasero (sin sobrepasar laterales/hombros)
+        _printMaxW  = size.x * 0.38;
+        _printMaxH  = size.y * 0.44;
+        // Cintura: calculado DESPUÉS de actualizar _printMaxH.
+        // Factor 0.5 = al borde inferior natural del estampado → masking activa al bajar.
+        // Factor 0.7: recorte activa ~25% abajo del centro — subir para recortar antes, bajar para después
+        _waistY = _baseY - _printMaxH * 0.7;
+
+        // Mesh with max Z = shirt back after rotation.y=π
+        let _bestZ = -Infinity;
+        model.traverse(child => {
+          if (child.isMesh) {
+            const mb = new THREE.Box3().setFromObject(child);
+            if (mb.max.z > _bestZ) { _bestZ = mb.max.z; _maleMeshRef = child; }
+          }
+        });
+        _shirtMeshRef = _maleMeshRef;
+
+        _useDecal = !!THREE.DecalGeometry;
+        _lastPropW = PROP_W; _lastPropH = PROP_H;
+        if (_useDecal) _rebuildDecal();
+        else           _setupPrintPlane();
+        // _shirtMeshRef y _useDecal ya están listos; img.onload es async así que
+        // _buildLogoMesh() dentro del callback usará los valores correctos.
+        _setupLogo(box, size, center);
+
+        document.getElementById('tshirt-loading').style.display = 'none';
+        setTimeout(() => redrawPrint(Store.state), 300);
+        setTimeout(() => redrawPrint(Store.state), 1200);
+      }, undefined, _buildFallbackShirt);
+    } else {
+      _buildFallbackShirt(null);
+    }
+
+    Store.subscribe(state => {
+      redrawPrint(state);
+      _updatePrintScale();
+      // If any thumb images aren't loaded yet, redraw once they are
+      document.querySelectorAll('.thumb img').forEach(img => {
+        if (!img.complete || !img.naturalWidth) {
+          img.addEventListener('load', () => redrawPrint(Store.state), { once: true });
+        }
+      });
+    });
+
+    new ResizeObserver(() => {
+      const w = vp.clientWidth, h = vp.clientHeight;
+      if (!w || !h) return;
+      _cam.aspect = w / h; _cam.updateProjectionMatrix(); _ren.setSize(w, h);
+    }).observe(vp);
+
+    // ── Drag estampado: hover sobre el estampado → cursor move, arrastrar lo mueve ──
+    {
+      const _ray = new THREE.Raycaster();
+      let _printDrag = false, _pdX = 0, _pdY = 0, _pdOx = 0, _pdOy = 0;
+
+      // Lanza un rayo y devuelve true si intersecta el print mesh activo
+      function _printHit(e) {
+        const mesh = _useDecal ? _decalMesh : _printPlane;
+        if (!mesh || !_cam || !_ren) return false;
+        const el   = _ren.domElement;
+        const rect = el.getBoundingClientRect();
+        _ray.setFromCamera({
+          x:  ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+          y: -((e.clientY - rect.top)  / rect.height) * 2 + 1
+        }, _cam);
+        return _ray.intersectObject(mesh, false).length > 0;
+      }
+
+      // Hover: cursor cambia a "move" cuando el ratón está sobre el estampado
+      _ren.domElement.addEventListener('pointermove', e => {
+        if (_printDrag) return;
+        _ren.domElement.style.cursor = _printHit(e) ? 'move' : '';
+      });
+
+      // pointerdown en capture phase: si está sobre el estampado → tomamos el evento
+      // Si NO está sobre el estampado → no llamamos stopPropagation → OrbitControls orbita
+      _ren.domElement.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || !_printHit(e)) return;
+        e.stopPropagation();
+        _printDrag = true;
+        _pdX = e.clientX; _pdY = e.clientY;
+        _pdOx = _offX;   _pdOy = _offY;
+        _prevDragX = e.clientX; _prevDragY = e.clientY;  // para delta incremental
+        _ren.domElement.setPointerCapture(e.pointerId);
+      }, { capture: true });
+
+      // ── Tamaño proyectado del área de impresión en píxeles de pantalla ──────
+      // Se usa en modo libre para convertir delta de arrastre → delta de canvas
+      // con la misma proporción que el área de impresión aparece en el viewport.
+      function _screenPrintSize() {
+        if (!_cam || !_ren) return null;
+        const W = _printMaxW * _printScale, H = _printMaxH * _printScale;
+        const cx = _offX, cy = _baseY + _offY, cz = _printZ;
+        const pL = new THREE.Vector3(cx - W/2, cy, cz).project(_cam);
+        const pR = new THREE.Vector3(cx + W/2, cy, cz).project(_cam);
+        const pT = new THREE.Vector3(cx, cy + H/2, cz).project(_cam);
+        const pB = new THREE.Vector3(cx, cy - H/2, cz).project(_cam);
+        const rect = _ren.domElement.getBoundingClientRect();
+        return {
+          w: Math.max(1, Math.abs(pR.x - pL.x) / 2 * rect.width),
+          h: Math.max(1, Math.abs(pT.y - pB.y) / 2 * rect.height),
+        };
+      }
+
+      let _prevDragX = 0, _prevDragY = 0;  // posición del puntero en el frame anterior
+
+      // pointermove en capture phase
+      _ren.domElement.addEventListener('pointermove', e => {
+        if (!_printDrag) return;
+
+        if (Store.state.freeMode && Store.state.freeEls?.length) {
+          // ── MODO LIBRE: mover elementos en el canvas ────────────────────────
+          // NO se cambia _offX/_offY → el área de impresión permanece fija en la camisa.
+          // El delta screen → canvas usa la proyección real del área de impresión.
+          const screenDX = e.clientX - _prevDragX;
+          const screenDY = e.clientY - _prevDragY;
+          _prevDragX = e.clientX;
+          _prevDragY = e.clientY;
+
+          const size = _screenPrintSize();
+          if (size && (Math.abs(screenDX) > 0.5 || Math.abs(screenDY) > 0.5)) {
+            // screenDX/size.w = fracción del área de impresión recorrida = delta canvas
+            const dx =  screenDX / size.w;
+            const dy =  screenDY / size.h;  // canvas Y↓ = screen Y↓ → mismo signo
+            Store.dispatch({ type: 'FREE_MOVE_ALL', dx, dy });
+            redrawPrint(Store.state);
+          }
+
+        } else {
+          // ── MODO PANEL: reposicionar el área de impresión en la camisa ──────
+          const scale = 0.5 / Math.max(vp.clientWidth, 1);
+          _offX = Math.max(-0.4, Math.min(0.4, _pdOx + (e.clientX - _pdX) * scale));
+          _offY = Math.max(-0.4, Math.min(0.4, _pdOy - (e.clientY - _pdY) * scale));
+          _prevDragX = e.clientX;
+          _prevDragY = e.clientY;
+          document.getElementById('print-x').value = Math.round(_offX * 100);
+          document.getElementById('print-y').value = Math.round(_offY * 100);
+          if (_useDecal) _rebuildDecal(); else _updatePlaneScale();
+          redrawPrint(Store.state);
+          _notifyOffset();
+        }
+      }, { capture: true });
+
+      ['pointerup', 'pointercancel'].forEach(ev =>
+        _ren.domElement.addEventListener(ev, () => {
+          if (!_printDrag) return;
+          _printDrag = false;
+          _ren.domElement.style.cursor = '';
+        }, { capture: true })
+      );
+    }
+
+    // Position sliders
+    document.getElementById('print-size').addEventListener('input', e => {
+      _printScale = parseFloat(e.target.value) / 100;
+      if (_useDecal) _rebuildDecal();
+      else           _updatePlaneScale();
+    });
+    document.getElementById('print-x').addEventListener('input', e => {
+      _offX = parseFloat(e.target.value) / 100;
+      if (_useDecal) _rebuildDecal();
+      else           _updatePlaneScale();
+      _notifyOffset();
+    });
+    document.getElementById('print-y').addEventListener('input', e => {
+      _offY = parseFloat(e.target.value) / 100;
+      if (_useDecal) _rebuildDecal();
+      else           _updatePlaneScale();
+      redrawPrint(Store.state);
+      _notifyOffset();
+    });
+    document.getElementById('btn-reset-print').addEventListener('click', () => {
+      _offX = _offY = 0; _printScale = 1.0;
+      document.getElementById('print-size').value = 100;
+      document.getElementById('print-x').value = 0;
+      document.getElementById('print-y').value = 0;
+      if (_useDecal) _rebuildDecal();
+      else           _updatePlaneScale();
+      _notifyOffset();
+    });
+
+    setTimeout(() => redrawPrint(Store.state), 400);
+  }
+
+  function setShirtColor(hex) {
+    _shirtColor = hex;
+    _shirtMats.forEach(m => m.color.setStyle(hex));
+  }
+
+  function zoomIn() {
+    const v    = _cam.position.clone().sub(_ctrl.target);
+    const dist = Math.max(_ctrl.minDistance, v.length() * 0.8);
+    _cam.position.copy(_ctrl.target).addScaledVector(v.normalize(), dist);
+  }
+  function zoomOut() {
+    const v    = _cam.position.clone().sub(_ctrl.target);
+    const dist = Math.min(_ctrl.maxDistance, v.length() * 1.25);
+    _cam.position.copy(_ctrl.target).addScaledVector(v.normalize(), dist);
+  }
+
+  function syncPrint() {
+    _updatePrintScale();
+    redrawPrint(Store.state);
+  }
+
+  function setPanelRotation(deg) {
+    _panelRotDeg = parseFloat(deg) || 0;
+    if (_useDecal) _rebuildDecal();
+    else           _updatePlaneScale();
+    redrawPrint(Store.state);
+  }
+
+  let _onOffsetChange = null;  // callback(newX, newY, deltaX, deltaY)
+  let _prevOffX = 0, _prevOffY = 0;
+  function _notifyOffset() {
+    if (!_onOffsetChange) return;
+    const dx = _offX - _prevOffX, dy = _offY - _prevOffY;
+    _prevOffX = _offX; _prevOffY = _offY;
+    _onOffsetChange(_offX, _offY, dx, dy);
+  }
+
+  function setOffset(x, y) {
+    _offX = x; _offY = y;
+    document.getElementById('print-x').value = Math.round(x * 100);
+    document.getElementById('print-y').value = Math.round(y * 100);
+    if (_useDecal) _rebuildDecal();
+    else           _updatePlaneScale();
+    redrawPrint(Store.state);
+    _notifyOffset();
+  }
+
+  function setScale(s) {
+    _printScale = s;
+    document.getElementById('print-size').value = Math.round(s * 100);
+    if (_useDecal) _rebuildDecal();
+    else           _updatePlaneScale();
+    redrawPrint(Store.state);
+  }
+
+  return {
+    init, redrawPrint, setShirtColor, zoomIn, zoomOut, syncPrint, setLogoFilter, setPanelRotation,
+    onOffsetChange: cb => { _onOffsetChange = cb; },
+    getOffset:      () => ({ x: _offX, y: _offY }),
+    setOffset,
+    setScale,
+    /** Devuelve los parámetros necesarios para proyectar el área de impresión al wrapper 2D */
+    getShirtLayout: () => ({
+      shirtW:  _shirtW,               // ancho total de la camisa (world units)
+      shirtH:  _shirtH,               // alto total de la camisa
+      shirtCY: _shirtCY,              // centro Y de la camisa en world coords
+      printW:  _printMaxW * _printScale,
+      printH:  _printMaxH * _printScale,
+      offX: _offX,                    // desplazamiento X del área de impresión
+      offY: _offY,                    // desplazamiento Y
+      baseY: _baseY,                  // posición Y base del área de impresión
+    }),
+    /** Superficie máxima de impresión (world units) y escala actual */
+    getPrintSurface: () => ({ maxW: _printMaxW, maxH: _printMaxH, scale: _printScale }),
+    /** Dimensiones actuales del decal (panel proyectado en la camisa) */
+    getDecalDims: () => _getDecalDims(),
+  };
+})();
+
+// ══════════════════════════════════════════════════════
+//  BACKGROUND COLOR
+// ══════════════════════════════════════════════════════
+const BG_PALETTE = [
+  { color: '#1a1a1a', label: 'Negro' },
+  { color: '#1e3a28', label: 'Verde' },
+  { color: '#d5f0ea', label: 'Menta' },
+  { color: '#f5f0e8', label: 'Crema' },
+];
+
+/** Luminancia perceptual (0=negro, 1=blanco). */
+function hexLuminance(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function closeBgDropdown() {
+  const dd = document.querySelector('.bg-dd');
+  if (dd) dd.classList.remove('open');
+}
+
+function applyBgColor(color, label) {
+  CURRENT_BG = color;
+  try { localStorage.setItem('panel-bg-color', color); } catch(e) {}
+  const dark = hexLuminance(color) < 0.35;
+  const filter = dark ? 'invert(1)' : '';
+  document.documentElement.style.setProperty('--canvas-bg', color);
+  document.documentElement.style.setProperty('--cell-bg', color);
+  document.documentElement.style.setProperty('--img-filter', filter || 'none');
+  // Actualizar botón
+  const _bgBtn = document.getElementById('bg-btn');
+  if (_bgBtn) {
+    _bgBtn.style.background   = color;
+    _bgBtn.style.borderColor  = hexLuminance(color) < 0.35 ? '#666' : '#bbb';
+  }
+  // Sync active row in dropdown
+  document.querySelectorAll('.cswatch-row').forEach(r => r.classList.remove('active'));
+  const activeRow = document.querySelector(`.cswatch-row[data-color="${CSS.escape(color)}"]`);
+  if (activeRow) activeRow.classList.add('active');
+  // Forzar actualización directa en thumbnails
+  document.querySelectorAll('.thumb').forEach(t => {
+    t.style.background = color;
+    const img = t.querySelector('img');
+    if (img) img.style.filter = filter;
+  });
+  Renderer.render(Store.state);
+  TshirtPreview.redrawPrint();
+  TshirtPreview.setShirtColor(color);
+  TshirtPreview.setLogoFilter(filter || 'none');
+  document.querySelectorAll('.shirt-swatch').forEach(s => s.classList.remove('active'));
+  closeBgDropdown();
+}
+
+function buildBgDropdown() {
+  const wrapper = document.getElementById('bg-wrapper');
+  const dd = document.createElement('div');
+  dd.className = 'bg-dd';
+
+  const grid = document.createElement('div');
+  grid.className = 'bg-dd-grid';
+
+  const lightColors = BG_PALETTE.filter(p => hexLuminance(p.color) >= 0.35);
+  const darkColors  = BG_PALETTE.filter(p => hexLuminance(p.color) <  0.35);
+
+  function addRow(palette, isFirst) {
+    palette.forEach(({ color, label }, i) => {
+      const row = document.createElement('div');
+      row.className = 'cswatch-row' + (isFirst && i === 0 ? ' active' : '');
+      row.dataset.color = color;
+      row.innerHTML = `<div class="cswatch" style="background:${color}"></div>
+                       <span class="cswatch-lbl">${label}</span>`;
+      row.addEventListener('click', () => applyBgColor(color, label));
+      grid.appendChild(row);
+    });
+  }
+
+  addRow(lightColors, true);
+
+  const sep = document.createElement('div');
+  sep.className = 'bg-sep';
+  grid.appendChild(sep);
+
+  addRow(darkColors, false);
+
+  dd.appendChild(grid);
+  dd.addEventListener('click', e => e.stopPropagation());
+  wrapper.appendChild(dd);
+}
+
+// ══════════════════════════════════════════════════════
+//  GALLERY
+// ══════════════════════════════════════════════════════
+
+
+/** Creates a thumb div for one image and appends it to grid. */
+function _addThumb(img, grid) {
+  const thumb = document.createElement('div');
+  thumb.className = 'thumb';
+  thumb.dataset.imgId = img.id;
+
+  const el = document.createElement('img');
+  el.alt = img.lbl;
+  // Load immediately (not lazy) — _bsp needs naturalWidth to render on t-shirt
+  _loadImg(el, img.src);
+
+  const lbl = document.createElement('div');
+  lbl.className = 'thumb-lbl';
+  lbl.textContent = img.lbl;
+
+  thumb.appendChild(el);
+  thumb.appendChild(lbl);
+
+  // Double-click → rotation popover
+  thumb.addEventListener('dblclick', e => {
+    e.stopPropagation(); e.preventDefault();
+    thumb.querySelector('.rot-popover')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'rot-popover';
+    const btnM = document.createElement('button'); btnM.textContent = '↺'; btnM.title = '-15°';
+    const numI = document.createElement('input');  numI.type = 'number'; numI.min = 0; numI.max = 359; numI.value = img.rotation || 0;
+    const btnP = document.createElement('button'); btnP.textContent = '↻'; btnP.title = '+15°';
+    const btnX = document.createElement('button'); btnX.className = 'rot-pop-close'; btnX.textContent = '✕';
+    function applyRot(deg) {
+      img.rotation = ((Math.round(deg) % 360) + 360) % 360;
+      numI.value = img.rotation;
+      el.style.transform = img.rotation ? `rotate(${img.rotation}deg)` : '';
+      Renderer.render(Store.state);
+      TshirtPreview.redrawPrint();
+    }
+    btnM.addEventListener('click', ev => { ev.stopPropagation(); applyRot((img.rotation || 0) - 15); });
+    btnP.addEventListener('click', ev => { ev.stopPropagation(); applyRot((img.rotation || 0) + 15); });
+    numI.addEventListener('change', ev => { ev.stopPropagation(); applyRot(parseInt(numI.value) || 0); });
+    numI.addEventListener('click',  ev => ev.stopPropagation());
+    btnX.addEventListener('click',  ev => { ev.stopPropagation(); pop.remove(); });
+    pop.append(btnM, numI, btnP, btnX);
+    thumb.appendChild(pop);
+    setTimeout(() => {
+      document.addEventListener('pointerdown', function oc(ev) {
+        if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('pointerdown', oc); }
+      });
+    }, 0);
+  });
+
+  // Drag con protección anti-scroll: solo permite drag si el gesto es horizontal.
+  // Evita que al deslizar verticalmente la galería se arrastre la imagen por accidente.
+  thumb.setAttribute('draggable', 'true');
+  let _tStartX = 0, _tStartY = 0, _tDragOk = true;
+  thumb.addEventListener('pointerdown', e => {
+    _tStartX = e.clientX; _tStartY = e.clientY; _tDragOk = true;
+  });
+  thumb.addEventListener('pointermove', e => {
+    if (!_tDragOk) return;
+    const dx = Math.abs(e.clientX - _tStartX);
+    const dy = Math.abs(e.clientY - _tStartY);
+    if (dy > 4 && dy > dx) _tDragOk = false;
+  });
+  thumb.addEventListener('dragstart', e => {
+    if (!_tDragOk) { e.preventDefault(); return; }
+    e.dataTransfer.setData('text/plain', String(img.id));
+    e.dataTransfer.effectAllowed = 'copy';
+    thumb.classList.add('dragging');
+  });
+  thumb.addEventListener('dragend', () => thumb.classList.remove('dragging'));
+
+  thumb.addEventListener('click', () => {
+    const { selectedId } = Store.state;
+    if (selectedId) {
+      const node = PM.find(Store.state.root, selectedId);
+      if (!node || node.type !== 'leaf') return;
+      Store.dispatch({ type: 'ASSIGN', nodeId: selectedId, imageId: img.id });
+    } else {
+      setImageCount(img.id, (IMAGE_COUNTS.get(img.id) || 0) + 1);
+    }
+  });
+
+  grid.appendChild(thumb);
+}
+
+function initGallery() {
+  document.getElementById('gallery-loading').style.display = 'none';
+  const grid = document.getElementById('gallery-grid');
+
+  // Read cart (shared with biblioteca) — do NOT delete it; keep for persistence
+  let _cartData = null;
+  try { _cartData = JSON.parse(localStorage.getItem('panel-design-cart') || 'null'); } catch(e) {}
+
+  const _cartIds = new Set(
+    _cartData ? Object.keys(_cartData).map(k => parseInt(k)) : []
+  );
+
+  // Show only panels the user selected in biblioteca (empty if entering directly)
+  const galleryImages = IMAGES.filter(img => _cartIds.has(img.id));
+  galleryImages.forEach(img => _addThumb(img, grid));
+
+  // "+" button — always present; navigates to biblioteca to add / change selection
+  const addBtn = document.createElement('div');
+  addBtn.className = 'add-panels-btn';
+  addBtn.title = 'Agregar paneles desde la biblioteca';
+  addBtn.innerHTML = '<span class="add-icon">+</span><span class="add-lbl">Agregar paneles</span>';
+  addBtn.addEventListener('click', () => {
+    (window.top || window).location.href = (window._appBase || '') + '/biblioteca';
+  });
+  grid.appendChild(addBtn);
+
+  // Pre-populate IMAGE_COUNTS and restore / auto-generate layout when there's a selection
+  if (_cartIds.size) {
+    galleryImages.forEach(img => {
+      const n = parseInt(_cartData[String(img.id)], 10) || 1;
+      setImageCount(img.id, n);
+    });
+
+    // Try to restore saved canvas state if cart IDs match exactly
+    let _restored = false;
+    try {
+      const saved = JSON.parse(localStorage.getItem('panel-canvas-state') || 'null');
+      if (saved?.root && Array.isArray(saved.cartIds)) {
+        const savedSet = new Set(saved.cartIds.map(Number));
+        const matches = savedSet.size === _cartIds.size && [...savedSet].every(id => _cartIds.has(id));
+        if (matches) {
+          _restored = true;
+          setTimeout(() => {
+            if (saved.propW > 0) PROP_W = saved.propW;
+            if (saved.propH > 0) PROP_H = saved.propH;
+            fitCanvas();   // contain-fit canvas with restored proportion, then render
+            Store.dispatch({ type: 'SET_ROOT', root: saved.root });
+          }, 50);
+        }
+      }
+    } catch(e) {}
+
+    if (!_restored) {
+      setTimeout(() => AutoLayout.generateDirect([]), 50);
+    }
+  }
+
+  // Apply active color/filter to newly created thumbnails
+  const _activePalette = BG_PALETTE.find(p => p.color === CURRENT_BG);
+  applyBgColor(CURRENT_BG, _activePalette?.label);
+
+  // Highlight the thumb of the selected cell's image
+  Store.subscribe(state => {
+    grid.querySelectorAll('.thumb').forEach(t => t.classList.remove('hi'));
+    if (state.selectedId) {
+      const node = PM.find(state.root, state.selectedId);
+      if (node && node.imageId !== null) {
+        const t = grid.querySelector(`[data-img-id="${node.imageId}"]`);
+        if (t) t.classList.add('hi');
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  CANVAS SIZING
+// ══════════════════════════════════════════════════════
+let _panoramaH = 0; // always 0 — no panorama scroll mode
+
+/**
+ * Size the canvas using contain-fitting: maintains PROP_W/PROP_H aspect ratio,
+ * fills at least one wrapper dimension, is centered.
+ * Does NOT render — call Renderer.render() separately if needed.
+ */
+function _sizeCanvas() {
+  const wrapper = document.getElementById('canvas-wrapper');
+  const canvas  = document.getElementById('canvas');
+  const pad     = 44;
+  const availW  = Math.max(wrapper.clientWidth  - pad, 80);
+  const availH  = Math.max(wrapper.clientHeight - pad, 80);
+
+  // En modo libre el canvas representa la superficie de impresión completa de la camisa
+  let propR;
+  if (Store.state.freeMode) {
+    const ps = TshirtPreview.getPrintSurface();
+    propR = ps.maxW / ps.maxH;
+  } else {
+    propR = PROP_W / PROP_H;
+  }
+
+  const wrapR   = availW / availH;
+  let cW, cH;
+  if (propR >= wrapR) {
+    cW = availW;
+    cH = Math.round(availW / propR);
+  } else {
+    cH = availH;
+    cW = Math.round(availH * propR);
+  }
+  wrapper.classList.remove('panorama');
+  canvas.style.width  = cW + 'px';
+  canvas.style.height = cH + 'px';
+  Renderer.updateSize();
+}
+
+/** Contain-fit canvas to wrapper, then re-render current layout. */
+function fitCanvas() {
+  _sizeCanvas();
+  Renderer.render(Store.state);
+}
+
+// ══════════════════════════════════════════════════════
+//  UNDO / REDO BUTTON STATE
+// ══════════════════════════════════════════════════════
+function updateToolbar() {
+  document.getElementById('btn-undo').disabled = !Store.canUndo;
+  document.getElementById('btn-redo').disabled = !Store.canRedo;
+
+  const free    = Store.state.freeMode;
+  const btnFree = document.getElementById('btn-free-mode');
+  const btnGen  = document.getElementById('btn-generate');
+
+  // Interruptor Libre ↔ Panel — convierte en ambas direcciones
+  if (btnFree) {
+    btnFree.textContent = free ? 'Panel' : 'Libre';
+    btnFree.classList.toggle('active', free);
+    btnFree.title = free
+      ? 'Convertir posiciones libres → cuadrícula y volver al modo panel'
+      : 'Pasar al modo libre: cada imagen se mueve independientemente';
+  }
+
+  // Generar: activo solo en modo panel
+  if (btnGen) {
+    btnGen.disabled    = free;
+    btnGen.textContent = 'Generar';
+    btnGen.title       = free
+      ? 'Disponible en modo panel'
+      : 'Regenerar el panel automáticamente';
+  }
+
+  // Sliders de posición/tamaño del estampado: deshabilitados en modo libre.
+  // En libre la superficie es fija (centrada, escala congelada) y la posición
+  // se controla moviendo los elementos dentro del canvas.
+  const printSize  = document.getElementById('print-size');
+  const printX     = document.getElementById('print-x');
+  const printY     = document.getElementById('print-y');
+  const btnReset   = document.getElementById('btn-reset-print');
+  if (printSize)  printSize.disabled  = free;
+  if (printX)     printX.disabled     = free;
+  if (printY)     printY.disabled     = free;
+  if (btnReset)   btnReset.disabled   = free;
+}
+
+// ══════════════════════════════════════════════════════
+//  CANVAS STATE PERSISTENCE
+// ══════════════════════════════════════════════════════
+function _saveCanvasState() {
+  try {
+    localStorage.setItem('panel-canvas-state', JSON.stringify({
+      root:    Store.state.root,
+      propW:   PROP_W,
+      propH:   PROP_H,
+      cartIds: [...IMAGE_COUNTS.keys()]
+    }));
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════
+//  APP INIT
+// ══════════════════════════════════════════════════════
+(function init() {
+  const canvas = document.getElementById('canvas');
+  Renderer.init(canvas);
+  probeImages(initGallery);   // detecta formatos antes de poblar la galería
+
+  Store.subscribe(state => {
+    // Suprimir render del canvas durante drag/resize/rotate en modo libre
+    // (el drag usa _fdRender() que ya gestiona el timing con requestAnimationFrame)
+    if (!Renderer.freeDragActive()) Renderer.render(state);
+    updateToolbar();
+    _saveCanvasState();
+  });
+
+  // Toolbar
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    _panoramaH = 0;
+    LOCKED_IMAGES.clear();
+    Store.dispatch({ type: 'CLEAR' });
+    try { localStorage.removeItem('panel-canvas-state'); } catch(e) {}
+  });
+  document.getElementById('btn-undo').addEventListener('click', () => Store.undo());
+  document.getElementById('btn-redo').addEventListener('click', () => Store.redo());
+
+  document.getElementById('btn-clean').addEventListener('click', function() {
+    const hidden = document.getElementById('canvas').classList.toggle('clean');
+    this.title   = hidden ? 'Mostrar divisores' : 'Ocultar divisores';
+    this.classList.toggle('active', hidden);
+  });
+
+  // Panel general rotation
+  function _applyPanelRot(deg) {
+    deg = ((Math.round(deg) % 360) + 360) % 360;
+    document.getElementById('panel-rotation').value = deg;
+    document.getElementById('canvas').style.transform = deg ? `rotate(${deg}deg)` : '';
+    TshirtPreview.setPanelRotation(deg);
+  }
+  document.getElementById('panel-rotation').addEventListener('change', function() {
+    _applyPanelRot(parseInt(this.value) || 0);
+  });
+  document.getElementById('btn-rot-minus').addEventListener('click', () => {
+    _applyPanelRot((parseInt(document.getElementById('panel-rotation').value) || 0) - 15);
+  });
+  document.getElementById('btn-rot-plus').addEventListener('click', () => {
+    _applyPanelRot((parseInt(document.getElementById('panel-rotation').value) || 0) + 15);
+  });
+
+  // Settings dropdown removed — controls are inline in toolbar
+
+  // Background color dropdown
+  buildBgDropdown();
+  document.getElementById('bg-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const dd = document.querySelector('.bg-dd');
+    const r  = e.currentTarget.getBoundingClientRect();
+    dd.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+    dd.style.top    = 'auto';
+    dd.style.right  = (window.innerWidth - r.right) + 'px';
+    dd.style.left   = 'auto';
+    dd.classList.toggle('open');
+  });
+  document.addEventListener('click', closeBgDropdown);
+
+  // Deselect on canvas background click
+  canvas.addEventListener('click', e => {
+    if (e.target === canvas) Store.dispatch({ type: 'SELECT', nodeId: null });
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT') return;
+
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); Store.undo(); }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); Store.redo(); }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const { selectedId } = Store.state;
+      if (selectedId) {
+        const node = PM.find(Store.state.root, selectedId);
+        if (node?.imageId !== null) Store.dispatch({ type: 'UNASSIGN', nodeId: selectedId });
+      }
+    }
+    if (e.key === 'Escape') Store.dispatch({ type: 'SELECT', nodeId: null });
+  });
+
+  // Responsive resize — re-contain canvas to new wrapper size (debounced)
+  let _resizeTimer = null;
+  new ResizeObserver(() => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(fitCanvas, 150);
+  }).observe(document.getElementById('canvas-wrapper'));
+
+  // Initial render — canvas fills available space
+  fitCanvas();
+  updateToolbar();
+
+  document.getElementById('btn-zoom-in').addEventListener('click',  () => TshirtPreview.zoomIn());
+  document.getElementById('btn-zoom-out').addEventListener('click', () => TshirtPreview.zoomOut());
+
+  // ── Free mode ─────────────────────────────────────────────────
+  const _canvas = document.getElementById('canvas');
+  const _btnFree = document.getElementById('btn-free-mode');
+  const _btnGen  = document.getElementById('btn-generate');
+
+  // ── Workspace libre: canvas = área de impresión, wrapper = workspace grande ───
+  //
+  // Los elementos se colocan libremente en el workspace.
+  // El canvas (área imprimible) está centrado en el wrapper.
+  // Shift+arrastrar en la camisa desplaza TODOS los elementos en la misma dirección.
+  // Los elementos fuera del canvas ([0,1]×[0,1]) no se imprimen.
+
+  const _canvasWrapper = document.getElementById('canvas-wrapper');  // eslint-disable-line
+  const _canvasFrame   = document.getElementById('canvas-frame');    // eslint-disable-line
+
+  // El movimiento libre desde la camisa se gestiona directamente en el handler
+  // del Shift+drag dentro de TshirtPreview (ver más abajo).
+  // Los sliders (print-x/y) controlan la posición del área de impresión de forma
+  // independiente sin desplazar los elementos del canvas.
+
+  // ── Copiar / Pegar / Duplicar / Eliminar con teclado en modo libre ───────
+  let _freeClip = null;  // clipboard interno del modo libre
+
+  document.addEventListener('keydown', e => {
+    if (!Store.state.freeMode) return;
+    if (e.target.matches('input,textarea')) return;  // no interferir con inputs
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (ctrl && e.key === 'c') {
+      // Copiar elemento seleccionado
+      const el = Store.state.freeEls.find(f => f.id === Store.state.selFreeId);
+      if (el) { _freeClip = { ...el }; e.preventDefault(); }
+    }
+
+    if (ctrl && (e.key === 'v' || e.key === 'd')) {
+      // Pegar (v) o Duplicar (d) — duplicar no requiere clipboard previo
+      const src = (e.key === 'd')
+        ? Store.state.freeEls.find(f => f.id === Store.state.selFreeId)
+        : _freeClip;
+      if (!src) { e.preventDefault(); return; }
+      const maxZ = Math.max(1, ...(Store.state.freeEls||[]).map(f => f.z||1));
+      const newEl = { ...src, id: uid(),
+        x: Math.min(0.95 - src.w, src.x + 0.03),
+        y: Math.min(0.95 - src.h, src.y + 0.03),
+        z: maxZ + 1 };
+      Store.dispatch({ type: 'FREE_ADD', el: newEl });
+      Store.dispatch({ type: 'FREE_SEL', id: newEl.id });
+      if (newEl.imgId != null)
+        setImageCount(newEl.imgId, (IMAGE_COUNTS.get(newEl.imgId)||0) + 1);
+      e.preventDefault();
+    }
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && Store.state.selFreeId) {
+      // Eliminar elemento seleccionado
+      const el = Store.state.freeEls.find(f => f.id === Store.state.selFreeId);
+      if (el) {
+        if (el.imgId != null)
+          setImageCount(el.imgId, Math.max(0, (IMAGE_COUNTS.get(el.imgId)||0) - 1));
+        Store.dispatch({ type: 'FREE_DEL', id: el.id });
+        e.preventDefault();
+      }
+    }
+  });
+
+  // ── Conversión Modo Libre → Grid (BSP) ──────────────────────────────────
+  //
+  // Caso simple (sin solapamientos):
+  //   Cada elemento se convierte en una hoja del BSP en su posición actual.
+  //   El espacio restante se rellena con paneles vacíos mediante cortes H/V.
+  //
+  // Caso con solapamiento:
+  //   Se detectan los grupos de elementos solapados (union-find).
+  //   El bounding-box del grupo se convierte en un sub-panel y se rellena
+  //   con el auto-layout distribuido entre las imágenes del grupo.
+
+  /** ¿Dos rectángulos (normalizados [0,1]) se solapan? */
+  function _rectsOverlap(a, b) {
+    const EPS = 1e-4;
+    return !(a.x + a.w <= b.x + EPS || b.x + b.w <= a.x + EPS ||
+             a.y + a.h <= b.y + EPS || b.y + b.h <= a.y + EPS);
+  }
+
+  /**
+   * Agrupa elementos solapados en "bloques":
+   *  - Bloque simple  {single, x, y, w, h}     → un elemento, ningún solapamiento
+   *  - Bloque múltiple {multi, x, y, w, h}      → bounding box de un grupo solapado
+   */
+  function _computeBlocks(freeEls) {
+    const n = freeEls.length;
+    const p = Array.from({length: n}, (_, i) => i);
+    const find = i => { while (p[i] !== i) { p[i] = p[p[i]]; i = p[i]; } return i; };
+    const union = (a, b) => { p[find(a)] = find(b); };
+
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++)
+        if (_rectsOverlap(freeEls[i], freeEls[j])) union(i, j);
+
+    const map = new Map();
+    for (let i = 0; i < n; i++) {
+      const r = find(i);
+      if (!map.has(r)) map.set(r, []);
+      map.get(r).push(freeEls[i]);
+    }
+
+    return [...map.values()].map(group => {
+      if (group.length === 1) {
+        return { single: group[0], x: group[0].x, y: group[0].y,
+                 w: group[0].w, h: group[0].h };
+      }
+      const bx = Math.min(...group.map(e => e.x));
+      const by = Math.min(...group.map(e => e.y));
+      const x2 = Math.max(...group.map(e => e.x + e.w));
+      const y2 = Math.max(...group.map(e => e.y + e.h));
+      return { multi: group, x: bx, y: by, w: x2 - bx, h: y2 - by };
+    });
+  }
+
+  /** Ratio efectivo de una imagen libre (considera rotación 90/270°). */
+  function _freeElemRatio(el) {
+    const img = IMAGES[el.imgId];
+    if (!img) return 1;
+    const rot = (el.rot || 0) % 360;
+    const r   = Math.max(0.1, img.ratio || 1);
+    return (rot === 90 || rot === 270) ? 1 / r : r;
+  }
+
+  /**
+   * Construye el nodo BSP para un conjunto de bloques dentro de la región
+   * (rx, ry, rw, rh) en coordenadas normalizadas [0,1].
+   *
+   * Busca el corte H/V más equilibrado que no parta ningún bloque.
+   * Si no existe corte limpio → auto-layout de todas las imágenes del grupo.
+   */
+  /** Convierte un array de imgs {id,ratio} a BSP. Guarda ante rows vacío. */
+  function _imgsToBSP(imgs, targetR) {
+    const valid = imgs.filter(i => i.id != null && IMAGES[i.id]);
+    if (!valid.length) return PM.leaf();
+    const { rows, normH } = findBestRowPacking(shuffleArray(valid),
+                                               Math.max(0.1, targetR));
+    if (!rows.length) return PM.leaf();
+    return buildRowsBSP(rows, normH);
+  }
+
+  function _blocksToNode(blocks, rx, ry, rw, rh) {
+    if (!blocks.length) return PM.leaf();
+
+    if (blocks.length === 1) {
+      const b = blocks[0];
+      if (b.single) {
+        const leaf = PM.leaf(b.single.imgId);
+        if (b.single.rot) leaf.rotation = b.single.rot;
+        return leaf;
+      }
+      // Grupo solapado: auto-layout en la región actual
+      const imgs = b.multi
+        .filter(e => e.imgId != null && IMAGES[e.imgId])
+        .map(e => ({ id: e.imgId, ratio: _freeElemRatio(e) }));
+      return _imgsToBSP(imgs, rw / Math.max(rh, 0.01));
+    }
+
+    // Buscar el mejor corte H o V que no parta ningún bloque.
+    // Intentamos los bordes de los bloques Y de los elementos individuales
+    // dentro de cada bloque multi (para capturar más posibles separadores).
+    const EPS       = 1e-4;
+    const totalArea = blocks.reduce((s, b) => s + b.w * b.h, 0) || 1;
+    let bestCut = null, bestScore = Infinity;
+
+    function tryCut(dir, pos) {
+      const g1 = [], g2 = [];
+      for (const b of blocks) {
+        const start = dir === 'h' ? b.y : b.x;
+        const end   = start + (dir === 'h' ? b.h : b.w);
+        if (end   <= pos + EPS) g1.push(b);
+        else if (start >= pos - EPS) g2.push(b);
+        else return; // el bloque atraviesa el corte → descartado
+      }
+      if (!g1.length || !g2.length) return;
+      const score = Math.abs(g1.reduce((s, b) => s + b.w * b.h, 0) / totalArea - 0.5);
+      if (score < bestScore) { bestScore = score; bestCut = { dir, pos, g1, g2 }; }
+    }
+
+    for (const b of blocks) {
+      // Bordes del bloque (o bounding box si es multi)
+      tryCut('h', b.y);     tryCut('h', b.y + b.h);
+      tryCut('v', b.x);     tryCut('v', b.x + b.w);
+      // Bordes de los elementos individuales dentro del bloque multi
+      if (b.multi) {
+        for (const e of b.multi) {
+          tryCut('h', e.y);     tryCut('h', e.y + e.h);
+          tryCut('v', e.x);     tryCut('v', e.x + e.w);
+        }
+      }
+    }
+
+    if (!bestCut) {
+      // Sin corte limpio: auto-layout de todas las imágenes
+      const allImgs = blocks.flatMap(b =>
+        b.single
+          ? [{ id: b.single.imgId, ratio: _freeElemRatio(b.single) }]
+          : b.multi.map(e => ({ id: e.imgId, ratio: _freeElemRatio(e) }))
+      );
+      return _imgsToBSP(allImgs, rw / Math.max(rh, 0.01));
+    }
+
+    const { dir, pos, g1, g2 } = bestCut;
+    if (dir === 'h') {
+      const ratio  = clamp((pos - ry) / rh, 0.08, 0.92);
+      const splitY = ry + rh * ratio;
+      return {
+        id: uid(), type: 'split', dir: 'h', ratio,
+        children: [
+          _blocksToNode(g1, rx, ry,     rw, splitY - ry),
+          _blocksToNode(g2, rx, splitY, rw, (ry + rh) - splitY)
+        ]
+      };
+    }
+    const ratio  = clamp((pos - rx) / rw, 0.08, 0.92);
+    const splitX = rx + rw * ratio;
+    return {
+      id: uid(), type: 'split', dir: 'v', ratio,
+      children: [
+        _blocksToNode(g1, rx,     ry, splitX - rx,     rh),
+        _blocksToNode(g2, splitX, ry, (rx + rw) - splitX, rh)
+      ]
+    };
+  }
+
+  /** Punto de entrada: convierte freeEls actuales → árbol BSP. */
+  function _freeToGrid() {
+    const freeEls = Store.state.freeEls;
+    if (!freeEls?.length) return PM.leaf();
+    const blocks = _computeBlocks(freeEls);
+    return _blocksToNode(blocks, 0, 0, 1, 1);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  let _savedPanelPrint = null;   // offset + escala guardados al entrar en modo libre
+
+  function _exitFreeMode(convertLayout = false) {
+    if (convertLayout && Store.state.freeEls?.length) {
+      let newRoot;
+      try {
+        newRoot = _freeToGrid();
+      } catch (err) {
+        console.error('[free→grid]', err);
+        newRoot = null; // fallback: restaurar BSP anterior
+      }
+      Store.dispatch({ type: 'EXIT_FREE' });
+      if (newRoot) Store.dispatch({ type: 'SET_ROOT', root: newRoot });
+    } else {
+      Store.dispatch({ type: 'EXIT_FREE' });
+    }
+    // Restaurar offset y escala que tenía el panel antes de entrar en modo libre
+    if (_savedPanelPrint) {
+      TshirtPreview.setOffset(_savedPanelPrint.x, _savedPanelPrint.y);
+      TshirtPreview.setScale(_savedPanelPrint.scale);
+      _savedPanelPrint = null;
+    }
+    fitCanvas();
+  }
+
+  // Interruptor Libre ↔ Panel — convierte en ambas direcciones usando el algoritmo
+  _btnFree.addEventListener('click', () => {
+    if (Store.state.freeMode) {
+      // Libre → Panel: convierte posiciones actuales → cuadrícula BSP
+      _exitFreeMode(true);
+      // render y updateToolbar se disparan por Store.subscribe
+    } else {
+      // Panel → Libre: convierte BSP actual → elementos libres.
+      // El modo libre usa la superficie de impresión completa CENTRADA en la camisa.
+      // Remapeamos coordenadas para que las imágenes mantengan tamaño físico,
+      // y absorbemos el offset del panel en la posición de los elementos.
+      const leaves  = Renderer.getLeafBounds();
+      const ps      = TshirtPreview.getPrintSurface();   // { maxW, maxH, scale }
+      const decal   = TshirtPreview.getDecalDims();       // { pw, ph } del panel actual
+      const off     = TshirtPreview.getOffset();           // { x, y } desplazamiento actual
+
+      // La superficie libre cubre la impresión completa a escala 1.0
+      // (la escala se resetea al entrar en libre, así que usamos maxW/maxH directamente)
+      const freeW   = ps.maxW;
+      const freeH   = ps.maxH;
+      const scaleW  = decal.pw / freeW;    // fracción del ancho que ocupa el panel
+      const scaleH  = decal.ph / freeH;    // fracción del alto que ocupa el panel
+
+      // Posición base: panel centrado + desplazamiento real en la camisa.
+      // off.x/freeW convierte el offset en world-units a coordenada normalizada [0,1].
+      // off.y se invierte porque canvas Y↓ ≠ mundo Y↑.
+      const baseX   = (1 - scaleW) / 2 + off.x / freeW;
+      const baseY   = (1 - scaleH) / 2 - off.y / freeH;
+
+      const freeEls = leaves.map((l, i) => ({
+        id: uid(), imgId: l.imageId,
+        x: baseX + l.x * scaleW,
+        y: baseY + l.y * scaleH,
+        w: l.w * scaleW,
+        h: l.h * scaleH,
+        rot: l.rotation || 0, z: i + 1,
+      }));
+
+      // Guardar offset y escala previos para restaurarlos al volver a modo panel
+      _savedPanelPrint = { x: off.x, y: off.y, scale: ps.scale };
+
+      Store.dispatch({ type: 'ENTER_FREE', els: freeEls });
+      // La superficie libre siempre está centrada en la camisa, escala = 1
+      TshirtPreview.setOffset(0, 0);
+      TshirtPreview.setScale(1.0);
+      // Re-dimensionar el canvas a las proporciones de la superficie de impresión
+      _sizeCanvas();
+      Renderer.render(Store.state);
+      TshirtPreview.redrawPrint();
+    }
+  });
+
+  // Generar — solo activo en modo panel (bloqueado en libre por updateToolbar)
+  document.getElementById('btn-generate').addEventListener('click', () => {
+    if (Store.state.freeMode) return;
+    if (!IMAGES.length) return;
+    if (LOCKED_IMAGES.size > 0) _generateWithLocks();
+    else AutoLayout.generateDirect([]);
+  });
+
+  // Deselect al clic en fondo del canvas en modo libre
+  _canvas.addEventListener('pointerdown', e => {
+    if (!Store.state.freeMode) return;
+    if (!e.target.closest('.free-el')) {
+      if (Store.state.selFreeId !== null)
+        Store.dispatch({ type: 'FREE_SEL', id: null });
+    }
+  });
+
+  // Drop de imágenes desde galería en modo libre
+  _canvas.addEventListener('dragover', e => {
+    if (!Store.state.freeMode) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  _canvas.addEventListener('drop', e => {
+    if (!Store.state.freeMode) return;
+    e.preventDefault();
+    const imgId = parseInt(e.dataTransfer.getData('text/plain'));
+    if (isNaN(imgId) || !IMAGES[imgId]) return;
+
+    const rect = _canvas.getBoundingClientRect();
+    const cW = _canvas.clientWidth, cH = _canvas.clientHeight;
+    const img = IMAGES[imgId];
+    const defaultW = 0.35;
+    const defaultH = defaultW / Math.max(0.1, img.ratio || 1) * (cW / cH);
+
+    const cx = (e.clientX - rect.left) / cW;
+    const cy = (e.clientY - rect.top)  / cH;
+    const maxZ = Math.max(1, ...(Store.state.freeEls || []).map(f => f.z || 1));
+
+    Store.dispatch({
+      type: 'FREE_ADD',
+      el: {
+        id: uid(),
+        imgId,
+        x: Math.max(0, Math.min(1 - defaultW, cx - defaultW / 2)),
+        y: Math.max(0, Math.min(1 - defaultH, cy - defaultH / 2)),
+        w: defaultW,
+        h: Math.max(0.05, defaultH),
+        rot: 0,
+        z: maxZ + 1,
+      }
+    });
+    setImageCount(imgId, (IMAGE_COUNTS.get(imgId) || 0) + 1);
+    TshirtPreview.redrawPrint();
+  });
+
+  // ── Mobile: tshirt-controls toggle ────────────────────────────
+  document.getElementById('btn-tc-toggle').addEventListener('click', () => {
+    document.getElementById('tshirt-controls').classList.toggle('tc-collapsed');
+  });
+
+  // ── Mobile: panel divider drag (resize canvas vs tshirt) ──────
+  (function() {
+    const divider = document.getElementById('panel-divider');
+    const cw = document.getElementById('canvas-col');
+    const tp = document.getElementById('tshirt-panel');
+
+    divider.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startY  = e.clientY;
+      const startCH = cw.getBoundingClientRect().height;
+      const startTH = tp.getBoundingClientRect().height;
+      const total   = startCH + startTH;
+
+      function move(ev) {
+        const dy    = ev.clientY - startY;
+        const newCH = Math.max(80, Math.min(total - 80, startCH + dy));
+        cw.style.flex   = 'none';
+        cw.style.height = newCH + 'px';
+        tp.style.flex   = 'none';
+        tp.style.height = (total - newCH) + 'px';
+        fitCanvas();
+      }
+
+      function up() {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup',   up);
+        fitCanvas();
+      }
+
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup',   up);
+    });
+  })();
+
+  // ── Canvas resize handles — drag to set proportion ───────────────
+  document.querySelectorAll('.rh').forEach(handle => {
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dx = parseInt(handle.dataset.dx, 10);
+      const dy = parseInt(handle.dataset.dy, 10);
+      const canvas  = document.getElementById('canvas');
+      const startX  = e.clientX;
+      const startY  = e.clientY;
+      const startW  = canvas.clientWidth;
+      const startH  = canvas.clientHeight;
+      handle.setPointerCapture(e.pointerId);
+
+      function move(ev) {
+        const wrapper = document.getElementById('canvas-wrapper');
+        const availW  = Math.max(wrapper.clientWidth  - 44, 100);
+        const availH  = Math.max(wrapper.clientHeight - 44, 100);
+        let newW = dx !== 0
+          ? Math.max(80, Math.min(availW, startW + (ev.clientX - startX) * dx))
+          : startW;
+        let newH = dy !== 0
+          ? Math.max(80, Math.min(availH, startH + (ev.clientY - startY) * dy))
+          : startH;
+        PROP_W = newW;
+        PROP_H = newH;
+        _sizeCanvas();
+        Renderer.render(Store.state);
+      }
+
+      function up() {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup',   up);
+        // Snap al ratio entero más cercano
+        const [nW, nH] = toNiceRatio(PROP_W / PROP_H);
+        PROP_W = nW; PROP_H = nH;
+        // Recálculo completo una sola vez al soltar
+        if (IMAGE_COUNTS.size > 0) {
+          if (LOCKED_IMAGES.size > 0) _generateWithLocks();
+          else AutoLayout.refit();
+        } else {
+          fitCanvas();
+        }
+      }
+
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup',   up);
+    });
+  });
+
+  TshirtPreview.init();
+
+})();
+</script>
+</body>
+</html>
+11

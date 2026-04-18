@@ -2,21 +2,22 @@ import React from 'react';
 export default function PanelNavBrand() {
     return /*#__PURE__*/ React.createElement("a", {
         href: "/",
-        className: "flex items-center gap-2 no-underline",
+        className: "flex items-center no-underline",
         style: {
-            fontFamily: "'Montserrat', sans-serif"
+            display: 'flex',
+            alignItems: 'center'
         }
-    }, /*#__PURE__*/ React.createElement("span", {
+    }, /*#__PURE__*/ React.createElement("img", {
+        src: "/logoPanel.svg",
+        alt: "PANEL! T-Shirts",
         style: {
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            letterSpacing: '-0.04em',
-            color: 'oklch(0.141 0.005 285.823)',
-            lineHeight: 1
+            height: '40px',
+            width: 'auto'
         }
-    }, "PANEL!"));
+    }));
 }
 export const layout = {
     areaId: 'headerMiddleCenter',
     sortOrder: 5
 };
+

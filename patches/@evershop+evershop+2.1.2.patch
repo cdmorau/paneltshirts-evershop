@@ -99,6 +99,19 @@ index f8c51da..9aaccb6 100644
 +};
  //# sourceMappingURL=getCookieSecret.js.map
 \ No newline at end of file
+diff --git a/node_modules/@evershop/evershop/dist/modules/catalog/services/ProductCollection.js b/node_modules/@evershop/evershop/dist/modules/catalog/services/ProductCollection.js
+index 0b109e5..7e48cac 100644
+--- a/node_modules/@evershop/evershop/dist/modules/catalog/services/ProductCollection.js
++++ b/node_modules/@evershop/evershop/dist/modules/catalog/services/ProductCollection.js
+@@ -16,7 +16,7 @@ export class ProductCollection {
+     async init(filters = [], isAdmin = false) {
+         // If the user is not admin, we need to filter out the out of stock products and the disabled products
+         if (!isAdmin) {
+-            this.baseQuery.andWhere('product.status', '=', 1);
++            this.baseQuery.andWhere('product.status', '=', true); // [PANEL] boolean column requires true not 1
+             if (getConfig('catalog.showOutOfStockProduct', false) === false) {
+                 this.baseQuery
+                     .andWhere('product_inventory.manage_stock', '=', false)
 diff --git a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js b/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
 index 0b7c53e..8130594 100644
 --- a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
