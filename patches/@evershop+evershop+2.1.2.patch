@@ -112,6 +112,23 @@ index 0b109e5..7e48cac 100644
              if (getConfig('catalog.showOutOfStockProduct', false) === false) {
                  this.baseQuery
                      .andWhere('product_inventory.manage_stock', '=', false)
+diff --git a/node_modules/@evershop/evershop/dist/modules/checkout/services/cart/registerCartBaseFields.js b/node_modules/@evershop/evershop/dist/modules/checkout/services/cart/registerCartBaseFields.js
+index bf283a9..4aac419 100644
+--- a/node_modules/@evershop/evershop/dist/modules/checkout/services/cart/registerCartBaseFields.js
++++ b/node_modules/@evershop/evershop/dist/modules/checkout/services/cart/registerCartBaseFields.js
+@@ -108,9 +108,10 @@ export function registerCartBaseFields(fields) {
+                     let weight = 0;
+                     const items = this.getItems();
+                     items.forEach((i) => {
+-                        weight += i.getData('product_weight') * i.getData('qty');
++                        const w = parseFloat(i.getData('product_weight')) || 0;
++                        weight += w * i.getData('qty');
+                     });
+-                    return weight;
++                    return isNaN(weight) ? 0 : weight;
+                 }
+             ],
+             dependencies: ['items']
 diff --git a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js b/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
 index 0b7c53e..8130594 100644
 --- a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
