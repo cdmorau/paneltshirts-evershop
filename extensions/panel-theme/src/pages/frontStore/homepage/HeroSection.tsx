@@ -39,7 +39,7 @@ export default function HeroSection() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <a
-            href="/catalog"
+            href="/category/e205b353-513a-41ce-b3bd-290ab8343008"
             className="panel-cta-btn px-8 py-3 text-sm"
             style={{
               backgroundColor: '#fff',
