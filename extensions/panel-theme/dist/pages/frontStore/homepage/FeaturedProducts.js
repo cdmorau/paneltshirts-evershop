@@ -80,7 +80,7 @@ export default function FeaturedProducts({ featuredProducts }) {
         }, product.price.text))))), /*#__PURE__*/ React.createElement("div", {
         className: "text-center mt-12"
     }, /*#__PURE__*/ React.createElement("a", {
-        href: "/catalog",
+        href: "/category/e205b353-513a-41ce-b3bd-290ab8343008",
         className: "panel-cta-btn text-sm px-8 py-3 inline-block",
         style: {
             backgroundColor: 'oklch(0.141 0.005 285.823)',
@@ -111,4 +111,3 @@ export const query = `
     }
   }
 `;
-
