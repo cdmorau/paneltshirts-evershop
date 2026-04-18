@@ -39,7 +39,7 @@ export default function HeroSection() {
     }, "Diseño urbano minimalista. Blanco sobre negro, negro sobre blanco."), /*#__PURE__*/ React.createElement("div", {
         className: "flex flex-col sm:flex-row gap-4"
     }, /*#__PURE__*/ React.createElement("a", {
-        href: "/catalog",
+        href: "/category/e205b353-513a-41ce-b3bd-290ab8343008",
         className: "panel-cta-btn px-8 py-3 text-sm",
         style: {
             backgroundColor: '#fff',
@@ -70,4 +70,3 @@ export const layout = {
     areaId: 'content',
     sortOrder: 10
 };
-

@@ -20,4 +20,3 @@ export const layout = {
     areaId: 'headerMiddleCenter',
     sortOrder: 5
 };
-

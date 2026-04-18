@@ -1,0 +1,5 @@
+{
+  "methods": ["POST"],
+  "path": "/mp/webhook",
+  "access": "public"
+}
