@@ -112,7 +112,7 @@ export const layout = {
 export const query = `
   query FeaturedProducts {
     featuredProducts: products(
-      filters: [{ key: "visibility", operation: "=", value: "1" }]
+      filters: [{ key: "visibility", operation: eq, value: "1" }]
       page: 1
       pageSize: 2
     ) {
