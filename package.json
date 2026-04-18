@@ -1,0 +1,26 @@
+{
+  "name": "paneltshirts-evershop",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "PANEL! T-Shirts e-commerce powered by EverShop",
+  "scripts": {
+    "setup": "evershop install",
+    "build": "evershop build",
+    "start": "evershop start",
+    "dev": "evershop dev"
+  },
+  "dependencies": {
+    "@evershop/evershop": "^2.1.2"
+  },
+  "devDependencies": {
+    "@parcel/watcher": "^2.5.1",
+    "@types/config": "^3.3.5",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.6",
+    "@types/react": "^17.0.0",
+    "execa": "^9.6.0",
+    "typescript": "^5.8.3"
+  }
+}

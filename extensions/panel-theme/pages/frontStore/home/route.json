@@ -1,0 +1,6 @@
+{
+  "id": "homepage",
+  "path": "",
+  "method": "GET",
+  "access": "public"
+}

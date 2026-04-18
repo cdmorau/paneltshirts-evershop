@@ -1,0 +1,6 @@
+{
+  "id": "designer",
+  "path": "designer",
+  "method": "GET",
+  "access": "public"
+}

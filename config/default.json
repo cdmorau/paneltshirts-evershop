@@ -1,0 +1,39 @@
+{
+  "shop": {
+    "language": "en",
+    "currency": "USD",
+    "timezone": "America/Bogota"
+  },
+  "system": {
+    "extensions": [
+      {
+        "name": "panel-theme",
+        "resolve": "extensions/panel-theme",
+        "enabled": true
+      }
+    ],
+    "theme": "panel-theme",
+    "session": {
+      "cookieSecret": "${COOKIE_SECRET}",
+      "cookie": {
+        "sameSite": "strict",
+        "maxAge": 86400000
+      }
+    }
+  },
+  "checkout": {
+    "allowGuestCheckout": true
+  },
+  "customer": {
+    "allowRegistration": false
+  },
+  "catalog": {
+    "product": {
+      "image": {
+        "listing": { "width": 400, "height": 400 },
+        "single": { "width": 800, "height": 800 },
+        "thumbnail": { "width": 100, "height": 100 }
+      }
+    }
+  }
+}

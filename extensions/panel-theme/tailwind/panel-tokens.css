@@ -1,0 +1,72 @@
+/* PANEL! T-Shirts Design System
+ * Ported from paneltshirts/client/src/index.css
+ * Palette: Minimalist Urban Contemporary — Black & White
+ */
+
+:root {
+  --background:           oklch(1 0 0);
+  --foreground:           oklch(0.141 0.005 285.823);
+  --card:                 oklch(1 0 0);
+  --card-foreground:      oklch(0.141 0.005 285.823);
+  --primary:              oklch(0.141 0.005 285.823);
+  --primary-foreground:   oklch(1 0 0);
+  --secondary:            oklch(0.95 0 0);
+  --secondary-foreground: oklch(0.2 0.01 285.823);
+  --muted:                oklch(0.92 0 0);
+  --muted-foreground:     oklch(0.4 0.01 285.823);
+  --accent:               oklch(0.141 0.005 285.823);
+  --accent-foreground:    oklch(1 0 0);
+  --destructive:          oklch(0.577 0.245 27.325);
+  --border:               oklch(0.92 0 0);
+  --input:                oklch(0.95 0 0);
+  --ring:                 oklch(0.141 0.005 285.823);
+  --radius:               0.35rem;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* PANEL! Utility Classes */
+.product-card {
+  transition: transform 300ms ease, box-shadow 300ms ease;
+}
+.product-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+}
+
+.cta-button {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.diagonal-divider {
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+}
+
+/* Container */
+.container {
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (min-width: 640px) {
+  .container { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+@media (min-width: 1024px) {
+  .container { padding-left: 2rem; padding-right: 2rem; max-width: 1280px; }
+}

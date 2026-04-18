@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.evershop/
+media/uploads/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Config with credentials (use .env instead)
+config/local.json
+config/production.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build artifacts
+*.tsbuildinfo
