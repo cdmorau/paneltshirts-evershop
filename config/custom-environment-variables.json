@@ -1,0 +1,15 @@
+{
+  "system": {
+    "session": {
+      "cookieSecret": "COOKIE_SECRET"
+    },
+    "stripe": {
+      "secretKey": "STRIPE_SECRET_KEY",
+      "publishableKey": "STRIPE_PUBLISHABLE_KEY",
+      "webhookSecret": "STRIPE_WEBHOOK_SECRET"
+    }
+  },
+  "themeConfig": {
+    "copyRight": "PANEL_COPYRIGHT"
+  }
+}

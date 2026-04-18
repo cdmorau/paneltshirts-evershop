@@ -112,6 +112,26 @@ paneltshirts-evershop/
 └── package.json
 ```
 
+## Configurar Stripe (Pagos)
+
+EverShop lee las claves de Stripe desde variables de entorno (via `config/custom-environment-variables.json`):
+
+```env
+STRIPE_SECRET_KEY=sk_test_...        # Panel Stripe → Developers → API Keys
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...      # Panel Stripe → Webhooks
+```
+
+Después de `npm run setup`, activa Stripe en el admin:
+1. Ir a `http://localhost:3000/admin/setting`
+2. Sección **Payment → Stripe**
+3. Activar Stripe y guardar
+
+Para webhooks locales en desarrollo:
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
 ## Gestión de Productos
 
 Los productos se gestionan desde el panel admin:

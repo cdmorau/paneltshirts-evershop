@@ -14,12 +14,12 @@
     ],
     "theme": "panel-theme",
     "session": {
-      "cookieSecret": "${COOKIE_SECRET}",
       "cookie": {
         "sameSite": "strict",
         "maxAge": 86400000
       }
-    }
+    },
+    "stripe": {}
   },
   "checkout": {
     "allowGuestCheckout": true
@@ -35,5 +35,8 @@
         "thumbnail": { "width": 100, "height": 100 }
       }
     }
+  },
+  "themeConfig": {
+    "copyRight": "© 2025 PANEL! T-Shirts. Todos los derechos reservados."
   }
 }
