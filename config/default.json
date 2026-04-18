@@ -12,7 +12,6 @@
         "enabled": true
       }
     ],
-    "theme": "panel-theme",
     "session": {
       "cookie": {
         "sameSite": "strict",

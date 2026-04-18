@@ -1,7 +1,11 @@
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 
-export default async function panelThemeBootstrap(app) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function panelThemeBootstrap(app: any) {
+  // Guard: during build phase the context is not an Express app
+  if (!app || typeof app.use !== 'function') return;
+
   // Security headers (F4.8)
   app.use(
     helmet({
@@ -9,7 +13,7 @@ export default async function panelThemeBootstrap(app) {
     })
   );
 
-  // Rate limiting on admin login — 20 requests per 15 minutes (F4.4)
+  // Rate limiting on admin login — 20 req / 15 min (F4.4)
   const adminLoginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,

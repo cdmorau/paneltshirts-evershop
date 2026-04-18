@@ -1,3 +1,16 @@
+diff --git a/node_modules/@evershop/evershop/dist/bin/install/index.js b/node_modules/@evershop/evershop/dist/bin/install/index.js
+index 9028e40..3964def 100644
+--- a/node_modules/@evershop/evershop/dist/bin/install/index.js
++++ b/node_modules/@evershop/evershop/dist/bin/install/index.js
+@@ -194,7 +194,7 @@ DB_SSLMODE="${sslMode}"
+     await startTransaction(connection);
+     try {
+         // Create the admin user
+-        const passwordHash = hashPassword(adminUser.password || '123456');
++        const passwordHash = await hashPassword(adminUser.password || '123456');
+         await execute(connection, `CREATE TABLE IF NOT EXISTS "admin_user" (
+         "admin_user_id" INT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY,
+         "uuid" UUID NOT NULL DEFAULT gen_random_uuid (),
 diff --git a/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js b/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js
 index 30c076c..4cbef57 100644
 --- a/node_modules/@evershop/evershop/dist/bin/lib/addDefaultMiddlewareFuncs.js
