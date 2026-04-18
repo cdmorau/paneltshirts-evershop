@@ -11,6 +11,23 @@ index 30c076c..4cbef57 100644
      }
      const adminSessionMiddleware = session({
          ...sess,
+diff --git a/node_modules/@evershop/evershop/dist/components/common/Editor.js b/node_modules/@evershop/evershop/dist/components/common/Editor.js
+index 74754fb..a9953ea 100644
+--- a/node_modules/@evershop/evershop/dist/components/common/Editor.js
++++ b/node_modules/@evershop/evershop/dist/components/common/Editor.js
+@@ -1,10 +1,11 @@
+ import { getColumnClasses } from '@components/common/form/editor/GetColumnClasses.js';
+ import { getRowClasses } from '@components/common/form/editor/GetRowClasses.js';
+ import { Image as ResponsiveImage } from '@components/common/Image.js';
++import DOMPurify from 'isomorphic-dompurify';
+ import React from 'react';
+ import './Editor.scss';
+ const Paragraph = ({ data }) => {
+-    return React.createElement("p", { dangerouslySetInnerHTML: { __html: data.text } });
++    return React.createElement("p", { dangerouslySetInnerHTML: { __html: DOMPurify.sanitize(data.text) } });
+ };
+ const Header = ({ data }) => {
+     const tagName = `h${data.level}`;
 diff --git a/node_modules/@evershop/evershop/dist/lib/util/jwt.js b/node_modules/@evershop/evershop/dist/lib/util/jwt.js
 index e4d3ff9..7f26706 100644
 --- a/node_modules/@evershop/evershop/dist/lib/util/jwt.js
@@ -29,6 +46,30 @@ index e4d3ff9..7f26706 100644
  export const TOKEN_TYPES = {
      ADMIN: 'admin',
      CUSTOMER: 'customer'
+diff --git a/node_modules/@evershop/evershop/dist/lib/util/passwordHelper.js b/node_modules/@evershop/evershop/dist/lib/util/passwordHelper.js
+index 2d12711..2192c65 100644
+--- a/node_modules/@evershop/evershop/dist/lib/util/passwordHelper.js
++++ b/node_modules/@evershop/evershop/dist/lib/util/passwordHelper.js
+@@ -1,13 +1,13 @@
+ import bcrypt from 'bcryptjs';
+ import { addProcessor, getValueSync } from './registry.js';
+ import { ValidatorManager } from './validator.js';
+-export function hashPassword(password) {
+-    const salt = bcrypt.genSaltSync(10);
+-    const hash = bcrypt.hashSync(password, salt);
+-    return hash;
++// [PANEL] Async bcrypt — avoids blocking the Node.js event loop
++export async function hashPassword(password) {
++    const salt = await bcrypt.genSalt(10);
++    return bcrypt.hash(password, salt);
+ }
+-export function comparePassword(password, hash) {
+-    return bcrypt.compareSync(password, hash);
++export async function comparePassword(password, hash) {
++    return bcrypt.compare(password, hash);
+ }
+ export function verifyPassword(password) {
+     const validator = getValueSync('passwordValidator', () => new ValidatorManager([
 diff --git a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js b/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
 index f8c51da..9aaccb6 100644
 --- a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
@@ -44,4 +85,46 @@ index f8c51da..9aaccb6 100644
 +    return secret;
 +};
  //# sourceMappingURL=getCookieSecret.js.map
+\ No newline at end of file
+diff --git a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js b/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
+index 0b7c53e..8130594 100644
+--- a/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
++++ b/node_modules/@evershop/evershop/dist/modules/cms/api/imageUpload/[multerFile]verifyImages[upload].js
+@@ -1,22 +1,25 @@
++import { fileTypeFromBuffer } from 'file-type';
+ import { INVALID_PAYLOAD } from '../../../../lib/util/httpStatus.js';
+-export default (request, response, next) => {
++
++const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']);
++
++// [PANEL] Validate by magic bytes — not client-controlled MIME type
++export default async (request, response, next) => {
+     if (!request.files || request.files.length === 0) {
+-        next();
++        return next();
+     }
+-    else {
+-        // Make sure the files are images
+-        const test = request.files.find((file) => !file.mimetype.startsWith('image'));
+-        if (test) {
+-            response.status(INVALID_PAYLOAD).json({
++    for (const file of request.files) {
++        const detected = await fileTypeFromBuffer(file.buffer);
++        const mime = detected?.mime ?? file.mimetype;
++        if (!ALLOWED_MIME_TYPES.has(mime)) {
++            return response.status(INVALID_PAYLOAD).json({
+                 error: {
+                     status: INVALID_PAYLOAD,
+-                    message: 'Only images are allowed'
++                    message: `File type not allowed: ${file.originalname}`
+                 }
+             });
+         }
+-        else {
+-            next();
+-        }
+     }
++    next();
+ };
+ //# sourceMappingURL=%5BmulterFile%5DverifyImages%5Bupload%5D.js.map
 \ No newline at end of file
