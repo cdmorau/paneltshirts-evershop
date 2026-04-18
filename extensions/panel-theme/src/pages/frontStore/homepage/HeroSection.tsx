@@ -26,12 +26,11 @@ export default function HeroSection() {
         >
           NUEVA COLECCIÓN
         </p>
-        <h1
-          className="text-5xl md:text-7xl mb-6"
-          style={{ color: '#fff', fontFamily: "'Montserrat', sans-serif", fontWeight: 700, lineHeight: 1 }}
-        >
-          PANEL!
-        </h1>
+        <img
+          src="/logoPanel.svg"
+          alt="PANEL! T-Shirts"
+          style={{ height: '80px', width: 'auto', marginBottom: '1.5rem', filter: 'invert(1)' }}
+        />
         <p
           className="text-lg md:text-xl mb-10 max-w-md"
           style={{ color: 'oklch(0.75 0 0)' }}

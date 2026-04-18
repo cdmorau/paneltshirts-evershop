@@ -22,15 +22,16 @@ export default function HeroSection() {
             color: 'oklch(0.6 0 0)',
             letterSpacing: '0.2em'
         }
-    }, "NUEVA COLECCIÓN"), /*#__PURE__*/ React.createElement("h1", {
-        className: "text-5xl md:text-7xl mb-6",
+    }, "NUEVA COLECCIÓN"), /*#__PURE__*/ React.createElement("img", {
+        src: "/logoPanel.svg",
+        alt: "PANEL! T-Shirts",
         style: {
-            color: '#fff',
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 700,
-            lineHeight: 1
+            height: '80px',
+            width: 'auto',
+            marginBottom: '1.5rem',
+            filter: 'invert(1)'
         }
-    }, "PANEL!"), /*#__PURE__*/ React.createElement("p", {
+    }), /*#__PURE__*/ React.createElement("p", {
         className: "text-lg md:text-xl mb-10 max-w-md",
         style: {
             color: 'oklch(0.75 0 0)'
@@ -69,3 +70,4 @@ export const layout = {
     areaId: 'content',
     sortOrder: 10
 };
+
