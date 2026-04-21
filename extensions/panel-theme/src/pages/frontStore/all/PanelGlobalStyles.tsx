@@ -25,6 +25,30 @@ export default function PanelGlobalStyles() {
       .panel-product-card { transition: transform 300ms ease, box-shadow 300ms ease; }
       .panel-product-card:hover { transform: scale(1.02); box-shadow: 0 10px 25px rgba(0,0,0,0.12); }
       .panel-cta-btn { font-family: 'Montserrat', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
+
+      html { scroll-behavior: smooth; }
+
+      header.header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: #fff;
+        border-bottom: 1px solid oklch(0.92 0 0);
+      }
+
+      .header__middle__center .logo {
+        display: none;
+      }
+
+      .header__middle {
+        grid-template-columns: auto 1fr auto;
+      }
+
+      footer.footer {
+        background: #fff;
+        border-top: 1px solid oklch(0.92 0 0);
+        margin-top: 0;
+      }
     `}</style>
   );
 }

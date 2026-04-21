@@ -35,21 +35,16 @@ export default function FeaturedProducts({ featuredProducts }: FeaturedProductsP
   const products = (featuredProducts?.length ? featuredProducts : fallback).slice(0, 2);
 
   return (
-    <section className="py-20 px-6" style={{ backgroundColor: '#fff' }}>
+    <section id="featured" className="py-20 px-6" style={{ backgroundColor: '#fff' }}>
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <p
-            className="panel-cta-btn text-xs mb-3"
-            style={{ color: 'oklch(0.5 0 0)', letterSpacing: '0.2em' }}
-          >
-            LO MÁS VENDIDO
-          </p>
+        <div className="max-w-5xl mx-auto text-left mb-12">
           <h2
-            className="text-3xl md:text-4xl"
+            className="text-5xl md:text-6xl font-bold mb-4"
             style={{ fontFamily: "'Montserrat', sans-serif" }}
           >
-            Colección Esencial
+            Destacados
           </h2>
+          <div className="w-16 h-1 mb-12" style={{ backgroundColor: 'oklch(0.141 0.005 285.823)' }}></div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

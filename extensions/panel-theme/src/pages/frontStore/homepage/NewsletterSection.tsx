@@ -12,22 +12,25 @@ export default function NewsletterSection() {
   return (
     <section
       className="py-16 px-6"
-      style={{ backgroundColor: 'oklch(0.97 0 0)', borderTop: '1px solid oklch(0.92 0 0)' }}
+      style={{
+        backgroundColor: 'oklch(0.141 0.005 285.823)',
+        borderTop: '1px solid rgba(255,255,255,0.2)',
+      }}
     >
       <div className="max-w-lg mx-auto text-center">
         <h3
           className="text-2xl mb-3"
-          style={{ fontFamily: "'Montserrat', sans-serif" }}
+          style={{ fontFamily: "'Montserrat', sans-serif", color: '#fff' }}
         >
           Únete al club PANEL!
         </h3>
-        <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0 0)' }}>
+        <p className="text-sm mb-6" style={{ color: 'oklch(0.65 0 0)' }}>
           Primeras noticias sobre nuevas colecciones, descuentos exclusivos y lanzamientos.
         </p>
         {submitted ? (
           <p
             className="panel-cta-btn text-sm py-3"
-            style={{ color: 'oklch(0.141 0.005 285.823)' }}
+            style={{ color: '#fff' }}
           >
             ¡Gracias por suscribirte!
           </p>
@@ -41,21 +44,23 @@ export default function NewsletterSection() {
               required
               className="flex-1 px-4 py-2 text-sm"
               style={{
-                border: '1px solid oklch(0.85 0 0)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                backgroundColor: '#fff',
+                color: 'oklch(0.141 0.005 285.823)',
                 borderRadius: 'var(--radius)',
                 outline: 'none',
-                fontFamily: "'Inter', sans-serif"
+                fontFamily: "'Inter', sans-serif",
               }}
             />
             <button
               type="submit"
               className="panel-cta-btn px-5 py-2 text-xs"
               style={{
-                backgroundColor: 'oklch(0.141 0.005 285.823)',
-                color: '#fff',
+                backgroundColor: '#fff',
+                color: 'oklch(0.141 0.005 285.823)',
                 border: 'none',
                 borderRadius: 'var(--radius)',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               SUSCRIBIR
@@ -69,5 +74,5 @@ export default function NewsletterSection() {
 
 export const layout = {
   areaId: 'content',
-  sortOrder: 50
+  sortOrder: 50,
 };

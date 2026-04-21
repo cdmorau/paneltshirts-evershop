@@ -29,6 +29,7 @@ export default function FeaturedProducts({ featuredProducts }) {
     ];
     const products = (featuredProducts?.length ? featuredProducts : fallback).slice(0, 2);
     return /*#__PURE__*/ React.createElement("section", {
+        id: "featured",
         className: "py-20 px-6",
         style: {
             backgroundColor: '#fff'
@@ -36,19 +37,18 @@ export default function FeaturedProducts({ featuredProducts }) {
     }, /*#__PURE__*/ React.createElement("div", {
         className: "max-w-5xl mx-auto"
     }, /*#__PURE__*/ React.createElement("div", {
-        className: "text-center mb-12"
-    }, /*#__PURE__*/ React.createElement("p", {
-        className: "panel-cta-btn text-xs mb-3",
-        style: {
-            color: 'oklch(0.5 0 0)',
-            letterSpacing: '0.2em'
-        }
-    }, "LO MÁS VENDIDO"), /*#__PURE__*/ React.createElement("h2", {
-        className: "text-3xl md:text-4xl",
+        className: "max-w-5xl mx-auto text-left mb-12"
+    }, /*#__PURE__*/ React.createElement("h2", {
+        className: "text-5xl md:text-6xl font-bold mb-4",
         style: {
             fontFamily: "'Montserrat', sans-serif"
         }
-    }, "Colección Esencial")), /*#__PURE__*/ React.createElement("div", {
+    }, "Destacados"), /*#__PURE__*/ React.createElement("div", {
+        className: "w-16 h-1 mb-12",
+        style: {
+            backgroundColor: 'oklch(0.141 0.005 285.823)'
+        }
+    })), /*#__PURE__*/ React.createElement("div", {
         className: "grid grid-cols-1 md:grid-cols-2 gap-8"
     }, products.map((product)=>/*#__PURE__*/ React.createElement("a", {
             key: product.productId,
