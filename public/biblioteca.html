@@ -1593,6 +1593,10 @@ function renderCartLeaf(node, x, y, w, h, parent) {
                           (rot ? `transform:rotate(${rot}deg);` : '');
       inner.appendChild(img);
       inner.addEventListener('click', () => cartRemove(node.imageId));
+      inner.addEventListener('touchend', e => {
+        e.preventDefault(); // prevent ghost click and scroll interception
+        cartRemove(node.imageId);
+      }, { passive: false });
       el.appendChild(inner);
 
       // Rotation button
