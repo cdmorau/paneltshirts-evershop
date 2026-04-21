@@ -126,8 +126,48 @@ body {
   width: 184px; flex-shrink: 0; background: var(--sidebar);
   border-right: var(--border); overflow-y: auto; padding: 10px 8px;
 }
-#gallery h3 { color: #777; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.gallery-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.gallery-header h3 { margin-bottom: 0; color: #777; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+#gallery-clear-all { background: none; border: none; cursor: pointer; font-size: 13px; color: #bbb; padding: 2px; line-height: 1; }
+#gallery-clear-all:hover { color: #cc3333; }
+#gallery-search {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px;
+  background: #f5f5f5; border: 1px solid #ddd; border-radius: 3px;
+  font: 11px var(--font); padding: 5px 8px; color: #333; outline: none;
+}
+#gallery-search:focus { border-color: #888; background: #fff; }
+#gallery-search::placeholder { color: #bbb; }
 .gallery-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.thumb-del {
+  position: absolute; top: 3px; right: 3px;
+  width: 18px; height: 18px;
+  background: rgba(200,40,40,.85); color: #fff; border: none; border-radius: 3px;
+  font-size: 13px; cursor: pointer; line-height: 1; padding: 0; z-index: 16;
+  display: none; align-items: center; justify-content: center;
+}
+.thumb:hover .thumb-del { display: flex; }
+
+/* ── BIBLIOTECA OVERLAY (preloaded iframe) ── */
+#bib-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.55); align-items: center; justify-content: center;
+}
+#bib-overlay.open { display: flex; }
+#bib-overlay-inner {
+  display: flex; flex-direction: column;
+  width: min(1100px, calc(100vw - 20px)); height: min(92vh, 860px);
+  background: #fff; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 14px 60px rgba(0,0,0,.4);
+}
+#bib-overlay-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; height: 42px; flex-shrink: 0;
+  background: #f5f5f5; border-bottom: 1px solid #e0e0e0;
+  font: 600 11px var(--font); letter-spacing: 1px; text-transform: uppercase; color: #444;
+}
+#bib-overlay-close { background: none; border: none; cursor: pointer; font-size: 20px; color: #888; padding: 2px 6px; line-height: 1; }
+#bib-overlay-close:hover { color: #111; }
+#bib-iframe { flex: 1; border: none; min-height: 0; }
 .thumb {
   aspect-ratio: 1; background: #eee; cursor: grab; overflow: hidden;
   border: 1px solid #ddd; position: relative; transition: border-color .12s;
@@ -582,7 +622,11 @@ body {
 
 <div id="main" data-tab="editor">
   <div id="gallery">
-    <h3>Imágenes</h3>
+    <div class="gallery-header">
+      <h3>Paneles</h3>
+      <button id="gallery-clear-all" title="Quitar todos los paneles">🗑</button>
+    </div>
+    <input type="text" id="gallery-search" placeholder="Buscar…">
     <div id="gallery-loading"><div class="loader-ring"></div>Cargando imágenes…</div>
     <div class="gallery-grid" id="gallery-grid"></div>
   </div>
@@ -2549,8 +2593,15 @@ function _addThumb(img, grid) {
   lbl.className = 'thumb-lbl';
   lbl.textContent = img.lbl;
 
+  const delBtn = document.createElement('button');
+  delBtn.className = 'thumb-del';
+  delBtn.title = 'Quitar panel';
+  delBtn.textContent = '×';
+  delBtn.addEventListener('click', e => { e.stopPropagation(); _removeFromGallery(img.id); });
+
   thumb.appendChild(el);
   thumb.appendChild(lbl);
+  thumb.appendChild(delBtn);
 
   // Double-click → rotation popover
   thumb.addEventListener('dblclick', e => {
@@ -2618,6 +2669,58 @@ function _addThumb(img, grid) {
   grid.appendChild(thumb);
 }
 
+/** Remove one panel from gallery, IMAGE_COUNTS, and localStorage cart */
+function _removeFromGallery(imgId) {
+  setImageCount(imgId, 0);
+  document.querySelector(`#gallery-grid .thumb[data-img-id="${imgId}"]`)?.remove();
+  try {
+    const cart = JSON.parse(localStorage.getItem('panel-design-cart') || '{}');
+    delete cart[String(imgId)];
+    localStorage.setItem('panel-design-cart', JSON.stringify(cart));
+  } catch(e) {}
+  Renderer.render(Store.state);
+  TshirtPreview.redrawPrint();
+}
+
+/** Re-sync gallery after biblioteca overlay closes */
+function _refreshGallery() {
+  let newCartData = null;
+  try { newCartData = JSON.parse(localStorage.getItem('panel-design-cart') || 'null'); } catch(e) {}
+  const newIds = new Set(newCartData ? Object.keys(newCartData).map(Number) : []);
+
+  const grid = document.getElementById('gallery-grid');
+  const addBtn = grid.querySelector('.add-panels-btn');
+
+  // Remove deselected thumbs
+  grid.querySelectorAll('.thumb[data-img-id]').forEach(t => {
+    if (!newIds.has(parseInt(t.dataset.imgId))) {
+      setImageCount(parseInt(t.dataset.imgId), 0);
+      t.remove();
+    }
+  });
+
+  // Add newly selected panels (before the + button)
+  const currentIds = new Set([...grid.querySelectorAll('.thumb[data-img-id]')].map(t => parseInt(t.dataset.imgId)));
+  if (addBtn) grid.removeChild(addBtn);
+  newIds.forEach(id => {
+    if (!currentIds.has(id)) {
+      const img = IMAGES.find(i => i.id === id);
+      if (img) _addThumb(img, grid);
+    }
+  });
+  if (addBtn) grid.appendChild(addBtn);
+
+  // Update counts
+  newIds.forEach(id => {
+    const n = parseInt(newCartData?.[String(id)], 10) || 1;
+    setImageCount(id, n);
+  });
+
+  // Regenerate layout when selection changed
+  if (newIds.size > 0) setTimeout(() => AutoLayout.generateDirect([]), 50);
+  else fitCanvas();
+}
+
 function initGallery() {
   document.getElementById('gallery-loading').style.display = 'none';
   const grid = document.getElementById('gallery-grid');
@@ -2634,15 +2737,49 @@ function initGallery() {
   const galleryImages = IMAGES.filter(img => _cartIds.has(img.id));
   galleryImages.forEach(img => _addThumb(img, grid));
 
-  // "+" button — always present; navigates to biblioteca to add / change selection
+  // Biblioteca overlay setup
+  const _bibOverlay = document.getElementById('bib-overlay');
+  const _bibIframe  = document.getElementById('bib-iframe');
+
+  // Preload iframe immediately in background
+  _bibIframe.src = (window._appBase || '') + '/biblioteca';
+
+  function _openBib() { _bibOverlay.classList.add('open'); }
+  function _closeBib() {
+    _bibOverlay.classList.remove('open');
+    _refreshGallery();
+  }
+  document.getElementById('bib-overlay-close').addEventListener('click', _closeBib);
+  _bibOverlay.addEventListener('click', e => { if (e.target === _bibOverlay) _closeBib(); });
+  window.addEventListener('message', e => {
+    if (e.data?.type === 'biblioteca:done') _closeBib();
+  });
+
+  // "+" button — opens biblioteca overlay
   const addBtn = document.createElement('div');
   addBtn.className = 'add-panels-btn';
   addBtn.title = 'Agregar paneles desde la biblioteca';
   addBtn.innerHTML = '<span class="add-icon">+</span><span class="add-lbl">Agregar paneles</span>';
-  addBtn.addEventListener('click', () => {
-    (window.top || window).location.href = (window._appBase || '') + '/biblioteca';
-  });
+  addBtn.addEventListener('click', _openBib);
   grid.appendChild(addBtn);
+
+  // Gallery search filter
+  document.getElementById('gallery-search').addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    grid.querySelectorAll('.thumb[data-img-id]').forEach(t => {
+      const lbl = t.querySelector('.thumb-lbl')?.textContent?.toLowerCase() || '';
+      t.style.display = (!q || lbl.includes(q)) ? '' : 'none';
+    });
+  });
+
+  // Clear-all button
+  document.getElementById('gallery-clear-all').addEventListener('click', () => {
+    if (!grid.querySelector('.thumb[data-img-id]')) return;
+    if (!confirm('¿Quitar todos los paneles de la selección?')) return;
+    [...grid.querySelectorAll('.thumb[data-img-id]')].forEach(t => {
+      _removeFromGallery(parseInt(t.dataset.imgId));
+    });
+  });
 
   // Pre-populate IMAGE_COUNTS and restore / auto-generate layout when there's a selection
   if (_cartIds.size) {
@@ -2986,5 +3123,16 @@ function _saveCanvasState() {
 
 })();
 </script>
+
+<!-- Biblioteca overlay: iframe preloaded in background, shown as modal -->
+<div id="bib-overlay">
+  <div id="bib-overlay-inner">
+    <div id="bib-overlay-bar">
+      <span>Biblioteca de paneles</span>
+      <button id="bib-overlay-close">✕</button>
+    </div>
+    <iframe id="bib-iframe" src="" title="Biblioteca de paneles"></iframe>
+  </div>
+</div>
 </body>
 </html>

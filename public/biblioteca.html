@@ -1702,8 +1702,13 @@ function renderCart() {
 // ══════════════════════════════════════════════════════
 function goToDesigner() {
   if (!CART.size) return;
-  _persistCart(); // already up-to-date, but ensure final state is saved
-  (window.top || window).location.href = (window._appBase || '') + '/designer';
+  _persistCart();
+  if (window.parent !== window) {
+    // Running inside designer overlay iframe — signal back via postMessage
+    window.parent.postMessage({ type: 'biblioteca:done' }, '*');
+  } else {
+    (window.top || window).location.href = (window._appBase || '') + '/designer';
+  }
 }
 
 // ══════════════════════════════════════════════════════
