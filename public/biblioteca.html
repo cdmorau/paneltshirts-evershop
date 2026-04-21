@@ -1440,7 +1440,6 @@ function renderSheetCart() {
 const _emptyEl = document.getElementById('lib-empty');
 
 function relayout(newRandom = true) {
-  if (isMobileView()) { relayoutGrid(3); return; }
   // Discard queued loads from the previous layout pass
   _imgQueue.length = 0;
 
