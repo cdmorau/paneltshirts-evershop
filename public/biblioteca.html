@@ -1383,9 +1383,9 @@ function updateFab() {
   const fab = document.getElementById('lib-cart-fab');
   if (!fab) return;
   const count = CART.size;
-  if (isMobileView() && count > 0) {
+  if (isMobileView()) {
     fab.style.display = 'flex';
-    fab.querySelector('.fab-count').textContent = count;
+    fab.querySelector('.fab-count').textContent = count || '';
   } else {
     fab.style.display = 'none';
   }
