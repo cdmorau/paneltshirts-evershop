@@ -1686,6 +1686,11 @@ function renderCart() {
   _cartCanvas.innerHTML = '';
   const m = 3;
   renderCartNode(root, m, m, w - 2 * m, h - 2 * m, _cartCanvas);
+
+  // Keep mobile sheet in sync if it's open
+  if (document.getElementById('lib-cart-sheet').classList.contains('open')) {
+    renderSheetCart();
+  }
 }
 
 // ══════════════════════════════════════════════════════
