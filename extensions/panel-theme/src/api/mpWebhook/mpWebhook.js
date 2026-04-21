@@ -1,16 +1,25 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago';
+import config from 'config';
 import pkg from 'pg';
 const { Client } = pkg;
 
+function getDbConfig() {
+  try {
+    const connectionString = config.get('mercadopago.databaseUrl');
+    if (connectionString) return { connectionString, ssl: { rejectUnauthorized: false } };
+  } catch { /* no DATABASE_URL */ }
+  return {
+    host: config.has('db.host') ? config.get('db.host') : 'localhost',
+    port: parseInt(config.has('db.port') ? config.get('db.port') : '5432'),
+    database: config.has('db.name') ? config.get('db.name') : undefined,
+    user: config.has('db.user') ? config.get('db.user') : undefined,
+    password: config.has('db.password') ? config.get('db.password') : undefined,
+    ssl: false
+  };
+}
+
 async function queryDB(sql, params = []) {
-  const client = new Client({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: process.env.DB_SSLMODE === 'require' ? { rejectUnauthorized: false } : false
-  });
+  const client = new Client(getDbConfig());
   await client.connect();
   try {
     const result = await client.query(sql, params);
@@ -27,7 +36,8 @@ export default async (request, response) => {
   const { type, data } = request.body;
   if (type !== 'payment') return;
 
-  const accessToken = process.env.MP_ACCESS_TOKEN;
+  let accessToken;
+  try { accessToken = config.get('mercadopago.accessToken'); } catch { return; }
   if (!accessToken || !data?.id) return;
 
   try {
@@ -52,8 +62,8 @@ export default async (request, response) => {
     const newStatus = statusMap[payment.status] || 'mp_pending';
 
     await queryDB(
-      `UPDATE "order" SET payment_status = $1, updated_at = NOW() WHERE order_id = $2`,
-      [newStatus, order.order_id]
+      `UPDATE "order" SET payment_status = $1, updated_at = NOW() WHERE uuid = $2`,
+      [newStatus, orderId]
     );
 
     console.log(`[MP Webhook] Order ${orderId}: ${payment.status} → ${newStatus}`);

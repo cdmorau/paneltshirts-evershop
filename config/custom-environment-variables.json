@@ -9,6 +9,21 @@
       "webhookSecret": "STRIPE_WEBHOOK_SECRET"
     }
   },
+  "mercadopago": {
+    "accessToken": "MP_ACCESS_TOKEN",
+    "publicKey": "MP_PUBLIC_KEY",
+    "sandbox": "MP_SANDBOX",
+    "webhookUrl": "MP_WEBHOOK_URL",
+    "appUrl": "APP_URL"
+  },
+  "db": {
+    "host": "DB_HOST",
+    "port": "DB_PORT",
+    "name": "DB_NAME",
+    "user": "DB_USER",
+    "password": "DB_PASSWORD",
+    "sslmode": "DB_SSLMODE"
+  },
   "themeConfig": {
     "copyRight": "PANEL_COPYRIGHT"
   }

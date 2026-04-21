@@ -1,83 +1,272 @@
-import React, { useEffect } from 'react';
-// MercadoPago logo SVG inline
-const MPLogo = ()=>/*#__PURE__*/ React.createElement("svg", {
-        width: "120",
-        height: "28",
-        viewBox: "0 0 120 28",
-        fill: "none",
-        xmlns: "http://www.w3.org/2000/svg"
-    }, /*#__PURE__*/ React.createElement("text", {
-        x: "0",
-        y: "20",
-        fontFamily: "sans-serif",
-        fontSize: "14",
-        fontWeight: "bold",
-        fill: "#009EE3"
-    }, "MercadoPago"));
-export default function MercadoPagoMethod({ createMPPreferenceApi, isSandbox }) {
-    const { registerPaymentComponent } = useCheckoutDispatch();
-    const { orderPlaced, orderId } = useCheckoutContext();
-    // After order is placed, create MP preference and redirect
-    useEffect(()=>{
-        if (!orderPlaced || !orderId) return;
-        fetch(createMPPreferenceApi, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                order_id: orderId
-            })
-        }).then((r)=>r.json()).then(({ data, error })=>{
-            if (error) {
-                console.error('[MP] Error:', error.message);
+import { useCheckout, useCheckoutDispatch } from '@components/frontStore/checkout/CheckoutContext.js';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+function loadMPScript() {
+    return new Promise((resolve, reject)=>{
+        if (window['MercadoPago']) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://sdk.mercadopago.com/js/v2';
+        script.onload = ()=>resolve();
+        script.onerror = ()=>reject(new Error('No se pudo cargar el SDK de MercadoPago'));
+        document.head.appendChild(script);
+    });
+}
+function waitForContainer(id, maxAttempts = 120) {
+    return new Promise((resolve, reject)=>{
+        let attempts = 0;
+        const check = ()=>{
+            const el = document.getElementById(id);
+            if (el) {
+                resolve(el);
                 return;
             }
-            // Use sandbox_init_point in dev, init_point in production
-            const url = isSandbox && data.sandbox_init_point ? data.sandbox_init_point : data.init_point;
-            window.location.href = url;
-        }).catch((err)=>console.error('[MP] Network error:', err));
-    }, [
-        orderPlaced,
-        orderId
+            if (attempts++ >= maxAttempts) {
+                reject(new Error(`Contenedor #${id} no encontrado en el DOM`));
+                return;
+            }
+            requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+    });
+}
+// Colombia minimum — real amount is always from order.grand_total on backend
+const MIN_MP_AMOUNT_COP = 1000;
+export default function MercadoPagoMethod({ getMPConfigApi, processMPPaymentApi, createMPPreferenceApi, cart }) {
+    const { registerPaymentComponent, checkout } = useCheckoutDispatch();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { checkoutData } = useCheckout();
+    const isMPSelected = checkoutData?.paymentMethod === 'mercadopago';
+    const rawCartTotal = Number(cart?.grandTotal?.value ?? 0);
+    const brickAmount = rawCartTotal > 0 ? rawCartTotal : MIN_MP_AMOUNT_COP;
+    // brickError is the ONLY state that FormRenderer depends on.
+    // Any other state change (loading, etc.) would recreate FormRenderer → destroy
+    // #mp-brick-container → orphan the mounted Brick.
+    const [brickError, setBrickError] = useState(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const brickRef = useRef(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderRef = useRef(null); // Cached order to survive cart consumption on retry
+    // Stable FormRenderer — only recreated when there is a fatal error.
+    // minHeight reserves space while the Brick's own spinner loads.
+    const FormRenderer = useCallback(()=>/*#__PURE__*/ React.createElement("div", {
+            style: {
+                paddingTop: '8px',
+                minHeight: '300px'
+            }
+        }, brickError && /*#__PURE__*/ React.createElement("div", {
+            style: {
+                padding: '10px 14px',
+                background: '#fff0f0',
+                border: '1px solid #fcc',
+                borderRadius: '8px',
+                color: '#c00',
+                fontSize: '0.85rem',
+                marginBottom: '12px'
+            }
+        }, brickError), /*#__PURE__*/ React.createElement("div", {
+            id: "mp-brick-container"
+        })), [
+        brickError
     ]);
-    // Register payment UI components
     useEffect(()=>{
         registerPaymentComponent('mercadopago', {
             nameRenderer: ()=>/*#__PURE__*/ React.createElement("div", {
-                    className: "flex items-center gap-2"
-                }, /*#__PURE__*/ React.createElement(MPLogo, null)),
-            formRenderer: ()=>/*#__PURE__*/ React.createElement("div", {
-                    className: "p-4 text-sm",
                     style: {
-                        backgroundColor: 'oklch(0.97 0 0)',
-                        borderRadius: 'var(--radius)',
-                        color: 'oklch(0.4 0 0)'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                     }
-                }, /*#__PURE__*/ React.createElement("p", null, "Serás redirigido a MercadoPago para completar tu pago de forma segura."), /*#__PURE__*/ React.createElement("p", {
-                    className: "mt-1",
+                }, /*#__PURE__*/ React.createElement("svg", {
+                    width: "24",
+                    height: "24",
+                    viewBox: "0 0 48 48",
+                    fill: "none"
+                }, /*#__PURE__*/ React.createElement("circle", {
+                    cx: "24",
+                    cy: "24",
+                    r: "24",
+                    fill: "#009EE3"
+                }), /*#__PURE__*/ React.createElement("text", {
+                    x: "50%",
+                    y: "55%",
+                    dominantBaseline: "middle",
+                    textAnchor: "middle",
+                    fontFamily: "sans-serif",
+                    fontSize: "20",
+                    fontWeight: "bold",
+                    fill: "white"
+                }, "MP")), /*#__PURE__*/ React.createElement("span", {
                     style: {
-                        color: 'oklch(0.55 0 0)',
-                        fontSize: '0.75rem'
-                    }
-                }, "Acepta tarjetas de crédito, débito, PSE, efecty y más.")),
-            checkoutButtonRenderer: ({ onSuccess })=>/*#__PURE__*/ React.createElement("button", {
-                    type: "button",
-                    onClick: onSuccess,
-                    className: "panel-cta-btn w-full py-3 text-sm",
-                    style: {
-                        backgroundColor: '#009EE3',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 'var(--radius)',
-                        cursor: 'pointer',
-                        fontFamily: "'Montserrat', sans-serif",
                         fontWeight: 600,
-                        letterSpacing: '0.05em'
+                        color: '#009EE3'
                     }
-                }, "PAGAR CON MERCADOPAGO")
+                }, "MercadoPago")),
+            formRenderer: FormRenderer,
+            // Suppress EverShop's default Place Order button — the Brick has its own
+            checkoutButtonRenderer: ()=>/*#__PURE__*/ React.createElement(React.Fragment, null)
         });
-    }, []);
+    }, [
+        FormRenderer
+    ]);
+    useEffect(()=>{
+        if (!isMPSelected) {
+            brickRef.current?.unmount?.();
+            brickRef.current = null;
+            orderRef.current = null;
+            setBrickError(null);
+            return;
+        }
+        let cancelled = false;
+        const initBrick = async ()=>{
+            setBrickError(null);
+            // 1. Get public key
+            let publicKey;
+            try {
+                const cfg = await fetch(getMPConfigApi).then((r)=>r.json());
+                if (cfg.error) throw new Error(cfg.error.message ?? 'MP no configurado');
+                publicKey = cfg.data.public_key;
+            } catch (e) {
+                if (!cancelled) setBrickError(e.message);
+                return;
+            }
+            // 2. Load MP SDK
+            try {
+                await loadMPScript();
+            } catch  {
+                if (!cancelled) setBrickError('No se pudo cargar MercadoPago. Verifica tu conexión y recarga.');
+                return;
+            }
+            if (cancelled) return;
+            // 3. Wait for the container rendered by FormRenderer
+            try {
+                await waitForContainer('mp-brick-container');
+            } catch (e) {
+                if (!cancelled) setBrickError(e.message);
+                return;
+            }
+            if (cancelled) return;
+            // 4. Create Payment Brick following MP Colombia docs
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mp = new window.MercadoPago(publicKey, {
+                locale: 'es-CO'
+            });
+            const bricks = mp.bricks();
+            try {
+                brickRef.current = await bricks.create('payment', 'mp-brick-container', {
+                    initialization: {
+                        amount: brickAmount
+                    },
+                    customization: {
+                        visual: {
+                            style: {
+                                theme: 'default'
+                            }
+                        },
+                        paymentMethods: {
+                            creditCard: 'all',
+                            debitCard: 'all',
+                            ticket: 'all',
+                            bankTransfer: 'all' // PSE
+                        }
+                    },
+                    callbacks: {
+                        onReady: ()=>{},
+                        onSubmit: ({ selectedPaymentMethod, formData })=>{
+                            return new Promise((resolve, reject)=>{
+                                void (async ()=>{
+                                    try {
+                                        // Reuse cached order on retry — cart is consumed after first checkout()
+                                        if (!orderRef.current) {
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            orderRef.current = await checkout();
+                                        }
+                                        const order = orderRef.current;
+                                        if (!order?.uuid) {
+                                            orderRef.current = null;
+                                            reject();
+                                            return;
+                                        }
+                                        // Step 1: Try direct payment processing (production with full seller setup)
+                                        const paymentResult = await fetch(processMPPaymentApi, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({
+                                                formData,
+                                                order_id: order.uuid,
+                                                brick_amount: brickAmount,
+                                                selectedPaymentMethod
+                                            })
+                                        }).then((r)=>r.json());
+                                        // Step 2: If direct payment succeeds, redirect to success
+                                        if (!paymentResult.error && paymentResult.data?.status !== 'rejected') {
+                                            resolve();
+                                            if (paymentResult.data?.redirect_url) {
+                                                window.location.href = paymentResult.data.redirect_url;
+                                            } else {
+                                                window.location.href = `/checkout/success/${order.uuid}`;
+                                            }
+                                            return;
+                                        }
+                                        // Step 3: Fallback to Checkout Pro (preference + redirect)
+                                        // Used when direct payment is not available (sandbox/account restrictions)
+                                        const prefResult = await fetch(createMPPreferenceApi, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({
+                                                order_id: order.uuid
+                                            })
+                                        }).then((r)=>r.json());
+                                        if (prefResult.error || !prefResult.data) {
+                                            reject();
+                                            return;
+                                        }
+                                        resolve();
+                                        const redirectUrl = prefResult.data.is_sandbox ? prefResult.data.sandbox_init_point : prefResult.data.init_point;
+                                        window.location.href = redirectUrl;
+                                    } catch  {
+                                        reject();
+                                    }
+                                })();
+                            });
+                        },
+                        onError: (err)=>{
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const e = err;
+                            // non_critical errors (e.g. no_payment_method_for_provided_bin) are
+                            // informational — the Brick handles them internally, don't destroy it.
+                            if (e?.type === 'non_critical') {
+                                console.warn('[MP Brick non-critical]', e);
+                                return;
+                            }
+                            console.error('[MP Brick]', err);
+                            if (cancelled) return;
+                            const message = e?.message || e?.cause?.message || (typeof err === 'string' ? err : null);
+                            const code = e?.type || e?.code;
+                            setBrickError(code ? `${code}: ${message ?? 'Error en el formulario.'}` : message ?? 'Error en el formulario de pago.');
+                        }
+                    }
+                });
+            } catch (e) {
+                if (!cancelled) setBrickError(e.message ?? 'Error inicializando el formulario.');
+            }
+        };
+        initBrick();
+        return ()=>{
+            cancelled = true;
+            brickRef.current?.unmount?.();
+            brickRef.current = null;
+        };
+    }, [
+        isMPSelected,
+        getMPConfigApi,
+        brickAmount
+    ]);
     return null;
 }
 export const layout = {
@@ -86,7 +275,13 @@ export const layout = {
 };
 export const query = `
   query MPQuery {
+    getMPConfigApi: url(routeId: "getMPConfig")
+    processMPPaymentApi: url(routeId: "processMPPayment")
     createMPPreferenceApi: url(routeId: "createMPPreference")
-    isSandbox: storeConfig(path: "mp_sandbox")
+    cart: myCart {
+      grandTotal {
+        value
+      }
+    }
   }
 `;

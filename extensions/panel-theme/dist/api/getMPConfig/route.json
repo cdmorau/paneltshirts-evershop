@@ -1,0 +1,5 @@
+{
+  "methods": ["GET"],
+  "path": "/mp/config",
+  "access": "public"
+}

@@ -1,16 +1,33 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import config from 'config';
 import pkg from 'pg';
 const { Client } = pkg;
 
+function getMPAccessToken() {
+  try { return config.get('mercadopago.accessToken'); } catch { return null; }
+}
+
+function getMPPublicKey() {
+  try { return config.get('mercadopago.publicKey'); } catch { return null; }
+}
+
+function getDbConfig() {
+  try {
+    const connectionString = config.get('mercadopago.databaseUrl');
+    if (connectionString) return { connectionString, ssl: { rejectUnauthorized: false } };
+  } catch { /* no DATABASE_URL */ }
+  return {
+    host: config.has('db.host') ? config.get('db.host') : 'localhost',
+    port: parseInt(config.has('db.port') ? config.get('db.port') : '5432'),
+    database: config.has('db.name') ? config.get('db.name') : undefined,
+    user: config.has('db.user') ? config.get('db.user') : undefined,
+    password: config.has('db.password') ? config.get('db.password') : undefined,
+    ssl: false
+  };
+}
+
 async function queryDB(sql, params = []) {
-  const client = new Client({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: process.env.DB_SSLMODE === 'require' ? { rejectUnauthorized: false } : false
-  });
+  const client = new Client(getDbConfig());
   await client.connect();
   try {
     const result = await client.query(sql, params);
@@ -21,10 +38,10 @@ async function queryDB(sql, params = []) {
 }
 
 export default async (request, response) => {
-  const accessToken = process.env.MP_ACCESS_TOKEN;
+  const accessToken = getMPAccessToken();
   if (!accessToken) {
     return response.status(400).json({
-      error: { message: 'MercadoPago no configurado. Agrega MP_ACCESS_TOKEN en .env' }
+      error: { message: 'MercadoPago no configurado. Agrega mercadopago.accessToken en config/local.json' }
     });
   }
 
@@ -32,6 +49,9 @@ export default async (request, response) => {
   if (!order_id) {
     return response.status(400).json({ error: { message: 'order_id es requerido' } });
   }
+
+  const isSandbox = (config.has('mercadopago.sandbox') && config.get('mercadopago.sandbox') === true)
+    || accessToken.startsWith('TEST-');
 
   try {
     const orders = await queryDB(`SELECT * FROM "order" WHERE uuid = $1`, [order_id]);
@@ -46,7 +66,10 @@ export default async (request, response) => {
 
     const mpClient = new MercadoPagoConfig({ accessToken });
     const preferenceClient = new Preference(mpClient);
-    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+
+    let baseUrl = 'http://localhost:3000';
+    try { baseUrl = config.get('mercadopago.appUrl'); } catch { /* usa default */ }
+
     const currency = order.currency || 'COP';
 
     const mpItems = items.length > 0 ? items.map(item => ({
@@ -63,6 +86,9 @@ export default async (request, response) => {
       currency_id: currency
     }];
 
+    let webhookUrl = `${baseUrl}/api/mp/webhook`;
+    try { webhookUrl = config.get('mercadopago.webhookUrl'); } catch { /* usa default */ }
+
     const preference = await preferenceClient.create({
       body: {
         items: mpItems,
@@ -70,14 +96,14 @@ export default async (request, response) => {
           email: order.customer_email || 'cliente@paneltshirts.com',
           name: order.customer_full_name || 'Cliente PANEL!'
         },
-        external_reference: order_id,
         back_urls: {
-          success: `${baseUrl}/checkout/success?order_id=${order_id}`,
-          failure: `${baseUrl}/checkout?mp_error=payment_failed`,
-          pending: `${baseUrl}/checkout/success?order_id=${order_id}&status=pending`
+          success: `${baseUrl}/checkout/success/${order_id}`,
+          failure: `${baseUrl}/checkout`,
+          pending: `${baseUrl}/checkout/success?order_id=${order_id}`
         },
         auto_return: 'approved',
-        notification_url: process.env.MP_WEBHOOK_URL || `${baseUrl}/api/mp/webhook`,
+        external_reference: order_id,
+        notification_url: webhookUrl,
         statement_descriptor: 'PANEL! T-Shirts',
         metadata: { order_id }
       }
@@ -87,7 +113,10 @@ export default async (request, response) => {
       data: {
         init_point: preference.init_point,
         sandbox_init_point: preference.sandbox_init_point,
-        preference_id: preference.id
+        preference_id: preference.id,
+        is_sandbox: isSandbox,
+        public_key: getMPPublicKey(),
+        amount: Number(order.grand_total)
       }
     });
   } catch (e) {
