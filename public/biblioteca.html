@@ -1737,19 +1737,25 @@ document.getElementById('lib-sheet-overlay').addEventListener('click', closeShee
 document.getElementById('lib-sheet-clear').addEventListener('click', () => { cartClear(); closeSheet(); });
 document.getElementById('lib-sheet-design').addEventListener('click', goToDesigner);
 
-// Sync cart from localStorage when designer opens overlay (e.g. after deleting panels in gallery)
-window.addEventListener('message', e => {
-  if (e.data?.type !== 'biblioteca:sync') return;
+// React to cart changes made by the designer (e.g. gallery × delete button)
+// storage events fire in all other same-origin documents when localStorage changes
+function _syncCartFromStorage(newValue) {
   CART.clear();
   try {
-    const saved = JSON.parse(localStorage.getItem('panel-design-cart') || 'null');
+    const saved = JSON.parse(newValue ?? localStorage.getItem('panel-design-cart') ?? 'null');
     if (saved) Object.entries(saved).forEach(([id, n]) => CART.set(parseInt(id), Number(n)));
   } catch(err) {}
-  // Update .selected visual state on panel cards without re-rendering the whole grid
   document.querySelectorAll('[data-img-id]').forEach(el => {
     el.classList.toggle('selected', CART.has(parseInt(el.dataset.imgId)));
   });
   renderCart();
+}
+window.addEventListener('storage', e => {
+  if (e.key === 'panel-design-cart') _syncCartFromStorage(e.newValue);
+});
+// Also handle explicit sync request from designer overlay open
+window.addEventListener('message', e => {
+  if (e.data?.type === 'biblioteca:sync') _syncCartFromStorage(null);
 });
 
 probeImages(() => {
