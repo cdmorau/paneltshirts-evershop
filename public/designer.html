@@ -2740,7 +2740,8 @@ function initGallery() {
   // Biblioteca overlay setup
   const _bibOverlay = document.getElementById('bib-overlay');
   const _bibIframe  = document.getElementById('bib-iframe');
-  const _bibBase    = (window._appBase || '') + '/biblioteca';
+  // Load /biblioteca.html directly to bypass EverShop layout and prevent nested iframes
+  const _bibBase    = (window._appBase || '') + '/biblioteca.html';
 
   // Preload in background immediately
   _bibIframe.src = _bibBase;
