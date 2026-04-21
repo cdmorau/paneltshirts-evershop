@@ -1737,6 +1737,21 @@ document.getElementById('lib-sheet-overlay').addEventListener('click', closeShee
 document.getElementById('lib-sheet-clear').addEventListener('click', () => { cartClear(); closeSheet(); });
 document.getElementById('lib-sheet-design').addEventListener('click', goToDesigner);
 
+// Sync cart from localStorage when designer opens overlay (e.g. after deleting panels in gallery)
+window.addEventListener('message', e => {
+  if (e.data?.type !== 'biblioteca:sync') return;
+  CART.clear();
+  try {
+    const saved = JSON.parse(localStorage.getItem('panel-design-cart') || 'null');
+    if (saved) Object.entries(saved).forEach(([id, n]) => CART.set(parseInt(id), Number(n)));
+  } catch(err) {}
+  // Update .selected visual state on panel cards without re-rendering the whole grid
+  document.querySelectorAll('[data-img-id]').forEach(el => {
+    el.classList.toggle('selected', CART.has(parseInt(el.dataset.imgId)));
+  });
+  renderCart();
+});
+
 probeImages(() => {
   buildFilter();
   relayout(true);

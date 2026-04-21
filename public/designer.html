@@ -2754,9 +2754,10 @@ function initGallery() {
     setTimeout(() => { _bibClosing = false; }, 400);
   }
   function _openBib() {
-    // Reload iframe so its in-memory cart reflects any deletions made in the gallery
-    _bibIframe.src = _bibBase;
     _bibOverlay.classList.add('open');
+    // Tell the live iframe to sync its in-memory cart from localStorage
+    // (reflects any panel deletions made in the gallery sidebar)
+    try { _bibIframe.contentWindow.postMessage({ type: 'biblioteca:sync' }, '*'); } catch(e) {}
   }
 
   document.getElementById('bib-overlay-close').addEventListener('click', _closeBib);
