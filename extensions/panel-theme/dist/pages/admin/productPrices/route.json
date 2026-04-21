@@ -1,0 +1,5 @@
+{
+  "methods": ["GET"],
+  "path": "/products/prices",
+  "name": "Editar Precios"
+}

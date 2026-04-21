@@ -106,8 +106,8 @@ export const layout = {
 };
 
 export const query = `
-  query PanelOrderConfirmation($orderId: String) {
-    order(uuid: $orderId) {
+  query PanelOrderConfirmation {
+    order(uuid: getContextValue('orderId', null)) {
       orderNumber
       grandTotal { text }
       customerEmail

@@ -1,62 +1,34 @@
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 
-// EverShop payment registration (loaded at runtime, not TS-typed)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let registerPaymentMethod: any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let addConfigProcessor: any;
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function panelThemeBootstrap(app: any) {
-  // Guard: during build phase the context is not an Express app
-  if (!app || typeof app.use !== 'function') return;
-
-  // Security headers (F4.8)
-  app.use(
-    helmet({
-      contentSecurityPolicy: false
-    })
-  );
-
-  // Rate limiting on admin login — 20 req / 15 min (F4.4)
-  const adminLoginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many login attempts, please try again later.' }
-  });
-  app.use('/admin/user/login', adminLoginLimiter);
-
-  // Register MercadoPago as payment method
+  // Register MercadoPago payment method — must run regardless of app context
   try {
-    const checkoutServices = await import(
-      '@evershop/evershop/dist/modules/checkout/services/getAvailablePaymentMethods.js'
-    );
-    registerPaymentMethod = checkoutServices.registerPaymentMethod;
+    const { registerPaymentMethod } = await import('@evershop/evershop/checkout/services');
+    registerPaymentMethod({
+      init: async () => ({
+        code: 'mercadopago',
+        name: 'MercadoPago'
+      }),
+      validator: async () => {
+        try {
+          const cfg = (await import('config')).default;
+          return !!(cfg.has('mercadopago.accessToken') && cfg.get('mercadopago.accessToken'));
+        } catch {
+          return !!process.env.MP_ACCESS_TOKEN;
+        }
+      }
+    });
   } catch {
-    // Module not loaded yet during build
-    return;
+    // Checkout services not available
   }
-
-  registerPaymentMethod({
-    init: async () => ({
-      code: 'mercadopago',
-      name: 'MercadoPago'
-    }),
-    validator: async () => {
-      // Only enabled if MP_ACCESS_TOKEN is set
-      return !!process.env.MP_ACCESS_TOKEN;
-    }
-  });
 
   // Register MercadoPago payment status codes
   try {
-    const { addConfigProcessor } = await import(
-      '@evershop/evershop/dist/lib/util/registry.js'
-    );
-    addConfigProcessor('orderPaymentStatus', (statuses: Record<string, object>) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { addProcessor } = await import('@evershop/evershop/lib/util/registry' as any);
+    addProcessor('orderPaymentStatus', (statuses: Record<string, object>) => ({
       ...statuses,
       mp_paid: { name: 'Pagado (MP)', badge: 'success', isCancelable: false, isDefault: false },
       mp_pending: { name: 'Pendiente (MP)', badge: 'warning', isCancelable: true, isDefault: false },
@@ -66,4 +38,18 @@ export default async function panelThemeBootstrap(app: any) {
   } catch {
     // Registry not available during build
   }
+
+  // Express middleware — only apply when running as HTTP server
+  if (!app || typeof app.use !== 'function') return;
+
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  const adminLoginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many login attempts, please try again later.' }
+  });
+  app.use('/admin/user/login', adminLoginLimiter);
 }

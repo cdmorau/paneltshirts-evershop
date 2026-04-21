@@ -1,0 +1,19 @@
+{
+  "system": {
+    "session": {
+      "cookieSecret": "<openssl rand -base64 32>"
+    }
+  },
+  "mercadopago": {
+    "accessToken": "TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "sandbox": true,
+    "appUrl": "http://localhost:3000"
+  },
+  "db": {
+    "host": "localhost",
+    "port": "5432",
+    "name": "paneltshirts",
+    "user": "panel",
+    "password": "<tu-db-password>"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "shop": {
     "language": "en",
-    "currency": "USD",
+    "currency": "COP",
     "timezone": "America/Bogota"
   },
   "system": {
@@ -37,5 +37,25 @@
   },
   "themeConfig": {
     "copyRight": "© 2025 PANEL! T-Shirts. Todos los derechos reservados."
+  },
+  "oms": {
+    "order": {
+      "paymentStatus": {
+        "pending":      { "name": "Pending",        "badge": "default",     "isDefault": true,  "isCancelable": true  },
+        "paid":         { "name": "Paid",            "badge": "success",     "isDefault": false, "isCancelable": false },
+        "canceled":     { "name": "Canceled",        "badge": "destructive", "isDefault": false, "isCancelable": true  },
+        "mp_paid":      { "name": "Pagado (MP)",     "badge": "success",     "isDefault": false, "isCancelable": false },
+        "mp_pending":   { "name": "Pendiente (MP)",  "badge": "warning",     "isDefault": false, "isCancelable": true  },
+        "mp_rejected":  { "name": "Rechazado (MP)",  "badge": "critical",    "isDefault": false, "isCancelable": true  },
+        "mp_cancelled": { "name": "Cancelado (MP)",  "badge": "destructive", "isDefault": false, "isCancelable": false }
+      },
+      "shipmentStatus": {
+        "pending":    { "name": "Pending",    "badge": "default",     "isDefault": true  },
+        "processing": { "name": "Processing", "badge": "default",     "isDefault": false },
+        "shipped":    { "name": "Shipped",    "badge": "warning",     "isDefault": false },
+        "delivered":  { "name": "Delivered",  "badge": "success",     "isCancelable": false },
+        "canceled":   { "name": "Canceled",   "badge": "destructive", "isCancelable": false }
+      }
+    }
   }
 }
