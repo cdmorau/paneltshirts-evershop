@@ -290,36 +290,23 @@ body {
   overflow: hidden;
 }
 .cart-cell-inner::after {
-  content: '✕  QUITAR';
+  content: '×';
   position: absolute;
   inset: 0;
-  background: rgba(200,30,30,.72);
+  background: rgba(220,40,40,.55);
   color: #fff;
-  font-size: 10px;
+  font-size: 22px;
   font-weight: bold;
-  letter-spacing: 1.5px;
-  font-family: var(--font);
   display: none;
   align-items: center;
   justify-content: center;
-  text-align: center;
 }
 .cart-cell:hover .cart-cell-inner::after { display: flex; }
+/* touch: show × on tap */
+.cart-cell:active .cart-cell-inner::after { display: flex; }
 
-/* On touch screens the overlay is always subtly visible so tapping works */
-@media (hover: none) {
-  .cart-cell-inner::after {
-    display: flex;
-    background: rgba(200,30,30,.18);
-    font-size: 9px;
-    letter-spacing: 1px;
-    color: rgba(200,30,30,.7);
-  }
-  .cart-cell:active .cart-cell-inner::after {
-    background: rgba(200,30,30,.72);
-    color: #fff;
-  }
-}
+/* hide rotation buttons inside the mobile sheet preview */
+#lib-sheet-canvas .cart-rot-btn { display: none !important; }
 .cart-cell img {
   display: block;
   pointer-events: none;
@@ -616,7 +603,7 @@ body {
 
 <!-- ── FAB (mobile) ── -->
 <button id="lib-cart-fab">
-  <span>👜</span>
+  <span>CARRITO DE EDICIÓN</span>
   <span class="fab-count">0</span>
 </button>
 
