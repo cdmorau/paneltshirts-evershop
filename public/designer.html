@@ -62,37 +62,44 @@ body {
   flex: 1; display: flex; flex-direction: column;
   border-left: var(--border); min-width: 200px;
 }
-#tshirt-viewport { flex: 1; overflow: hidden; background: #dadada; }
+#tshirt-viewport { flex: 1; overflow: hidden; background: #dadada; position: relative; }
 #tshirt-controls {
-  background: #fff; border-top: var(--border);
-  display: flex; align-items: center; gap: 20px; padding: 10px 16px;
-  flex-shrink: 0;
+  position: absolute; inset: 0; pointer-events: none; z-index: 15;
 }
-.tc-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.tc-lbl { color: #999; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+.tc-overlay {
+  position: absolute; pointer-events: all;
+  background: rgba(255,255,255,.82);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.6);
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  border-radius: 10px; padding: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.tc-overlay-size { bottom: 14px; left: 14px; }
+.tc-overlay-move { bottom: 14px; right: 14px; }
+.tc-lbl { color: #555; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
 .tc-row-btns { display: flex; gap: 3px; }
 .tc-icon-btn {
-  width: 34px; height: 34px; padding: 0;
+  width: 28px; height: 28px; padding: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: bold; border-radius: 6px;
-  background: #f4f4f4; border: 1px solid #ccc; cursor: pointer;
-  transition: background .1s, border-color .1s;
+  font-size: 13px; font-weight: bold; border-radius: 6px;
+  background: rgba(255,255,255,.9); border: 1px solid rgba(0,0,0,.18);
+  cursor: pointer; transition: background .1s, transform .08s;
 }
-.tc-icon-btn:hover { background: #e0e0e0; border-color: #888; }
+.tc-icon-btn:hover { background: #e8e8e8; border-color: #888; }
+.tc-icon-btn:active { transform: scale(.92); }
 .tc-dpad {
   display: grid;
-  grid-template-columns: repeat(3, 34px);
-  grid-template-rows: repeat(3, 34px);
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(3, 28px);
   gap: 3px;
 }
 .tc-dpad-center {
-  background: #111 !important; color: #fff !important;
-  border-color: #111 !important; font-size: 10px !important;
-  letter-spacing: .5px;
+  background: rgba(17,17,17,.85) !important; color: #fff !important;
+  border-color: transparent !important; font-size: 8px !important;
 }
-.tc-dpad-center:hover { background: #333 !important; }
-.tc-sep { width: 1px; height: 36px; background: #e8e8e8; align-self: center; }
-#shirt-colors { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; max-width: 80px; }
+.tc-dpad-center:hover { background: rgba(40,40,40,.9) !important; }
+#shirt-colors { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 90px; margin-bottom: 2px; }
 .shirt-swatch {
   width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
   border: 1.5px solid rgba(0,0,0,.2); cursor: pointer;
@@ -358,7 +365,7 @@ body {
 #btn-tc-toggle {
   display: none;
   position: absolute;
-  bottom: 8px; right: 8px;
+  bottom: 8px; left: 8px;
   z-index: 20;
   background: rgba(255,255,255,.85);
   border: 1px solid #bbb;
@@ -372,7 +379,6 @@ body {
 
 /* ── TSHIRT CONTROLS TOGGLE ── */
 #tshirt-controls.tc-collapsed { display: none; }
-#tshirt-controls.tc-collapsed + * { display: none; }  /* unused, but safe */
 
 /* ── SETTINGS DROPDOWN ── */
 #settings-wrapper { position: relative; }
@@ -435,7 +441,6 @@ body {
 ═══════════════════════════════════════════ */
 @media (max-width: 1099px) {
   #gallery { width: 140px; }
-  #tshirt-controls { gap: 14px; padding: 10px; }
 }
 
 /* ═══════════════════════════════════════════
@@ -524,15 +529,12 @@ body {
     display: flex;
     flex-direction: column;
   }
-  #main[data-tab="camiseta"] #tshirt-controls {
-    justify-content: center;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-    padding: 10px 12px;
-    gap: 14px;
-  }
-  .tc-icon-btn { width: 40px; height: 40px; font-size: 18px; }
-  .tc-dpad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); }
+  /* Controls are overlaid on the viewport — larger touch targets on mobile */
+  .tc-icon-btn { width: 34px; height: 34px; font-size: 15px; }
+  .tc-dpad { grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); gap: 4px; }
+  .tc-overlay { padding: 9px; gap: 5px; border-radius: 12px; }
+  .tc-overlay-size { bottom: 16px; left: 12px; }
+  .tc-overlay-move { bottom: 16px; right: 12px; }
   #main[data-tab="camiseta"] #btn-tc-toggle { display: flex; }
   #main[data-tab="camiseta"] #tshirt-mini { width: 80px; height: 100px; }
 
@@ -614,41 +616,35 @@ body {
         <div id="tshirt-loading">Cargando modelo 3D…</div>
         <button id="btn-tc-toggle" title="Controles">⚙</button>
         <canvas id="tshirt-mini" title="Vista opuesta"></canvas>
-      </div>
-      <div id="tshirt-controls">
-        <!-- Tamaño -->
-        <div class="tc-group">
-          <span class="tc-lbl">Tamaño</span>
-          <div class="tc-row-btns">
-            <button class="tc-icon-btn" id="btn-print-smaller" title="Reducir">−</button>
-            <button class="tc-icon-btn" id="btn-print-larger"  title="Aumentar">+</button>
+        <!-- Overlay controls — float over the 3D viewport -->
+        <div id="tshirt-controls">
+          <!-- Bottom-left: Tamaño -->
+          <div class="tc-overlay tc-overlay-size">
+            <span class="tc-lbl">Tamaño</span>
+            <div class="tc-row-btns">
+              <button class="tc-icon-btn" id="btn-print-smaller" title="Reducir">−</button>
+              <button class="tc-icon-btn" id="btn-print-larger"  title="Aumentar">+</button>
+            </div>
           </div>
-        </div>
-        <div class="tc-sep"></div>
-        <!-- Mover (D-pad) -->
-        <div class="tc-group">
-          <span class="tc-lbl">Mover estampado</span>
-          <div class="tc-dpad">
-            <span></span>
-            <button class="tc-icon-btn" id="btn-print-up"    title="Arriba">↑</button>
-            <span></span>
-            <button class="tc-icon-btn" id="btn-print-left"  title="Izquierda">←</button>
-            <button class="tc-icon-btn tc-dpad-center" id="btn-reset-print" title="Centrar estampado">●</button>
-            <button class="tc-icon-btn" id="btn-print-right" title="Derecha">→</button>
-            <span></span>
-            <button class="tc-icon-btn" id="btn-print-down"  title="Abajo">↓</button>
-            <span></span>
+          <!-- Bottom-right: Color + D-pad -->
+          <div class="tc-overlay tc-overlay-move">
+            <div id="shirt-colors"></div>
+            <div class="tc-dpad">
+              <span></span>
+              <button class="tc-icon-btn" id="btn-print-up"    title="Arriba">↑</button>
+              <span></span>
+              <button class="tc-icon-btn" id="btn-print-left"  title="Izquierda">←</button>
+              <button class="tc-icon-btn tc-dpad-center" id="btn-reset-print" title="Centrar estampado">●</button>
+              <button class="tc-icon-btn" id="btn-print-right" title="Derecha">→</button>
+              <span></span>
+              <button class="tc-icon-btn" id="btn-print-down"  title="Abajo">↓</button>
+              <span></span>
+            </div>
           </div>
+          <input type="hidden" id="print-size" value="100">
+          <input type="hidden" id="print-x"    value="0">
+          <input type="hidden" id="print-y"    value="0">
         </div>
-        <div class="tc-sep"></div>
-        <!-- Colores -->
-        <div class="tc-group">
-          <span class="tc-lbl">Color</span>
-          <div id="shirt-colors"></div>
-        </div>
-        <input type="hidden" id="print-size" value="100">
-        <input type="hidden" id="print-x"    value="0">
-        <input type="hidden" id="print-y"    value="0">
       </div>
     </div>
   </div>
@@ -2164,11 +2160,9 @@ const TshirtPreview = (() => {
     _ctrl.enableDamping = true;
     _ctrl.dampingFactor = 0.06;
     _ctrl.target.set(0, 0, 0);
-    // On mobile the arrow buttons are the primary control — disable orbit drag
-    if (window.matchMedia('(max-width: 639px)').matches) {
-      _ctrl.enableRotate = false;
-      _ctrl.enableZoom   = false;
-    }
+    // On mobile use arrow/size buttons — fully disable OrbitControls touch
+    const _isMobile = window.matchMedia('(max-width: 639px)').matches;
+    if (_isMobile) _ctrl.enabled = false;
     _ctrl.update();
 
     // Mini secondary view (opposite side)
@@ -2279,6 +2273,7 @@ const TshirtPreview = (() => {
       const w = vp.clientWidth, h = vp.clientHeight;
       if (!w || !h) return;
       _cam.aspect = w / h; _cam.updateProjectionMatrix(); _ren.setSize(w, h);
+      _ctrl.enabled = !window.matchMedia('(max-width: 639px)').matches;
     }).observe(vp);
 
     // ── Drag estampado: hover sobre el estampado → cursor move, arrastrar lo mueve ──
