@@ -2740,19 +2740,35 @@ function initGallery() {
   // Biblioteca overlay setup
   const _bibOverlay = document.getElementById('bib-overlay');
   const _bibIframe  = document.getElementById('bib-iframe');
+  const _bibBase    = (window._appBase || '') + '/biblioteca';
 
-  // Preload iframe immediately in background
-  _bibIframe.src = (window._appBase || '') + '/biblioteca';
+  // Preload in background immediately
+  _bibIframe.src = _bibBase;
 
-  function _openBib() { _bibOverlay.classList.add('open'); }
+  let _bibClosing = false;
   function _closeBib() {
+    if (_bibClosing) return;
+    _bibClosing = true;
     _bibOverlay.classList.remove('open');
     _refreshGallery();
+    setTimeout(() => { _bibClosing = false; }, 400);
   }
+  function _openBib() {
+    // Reload iframe so its in-memory cart reflects any deletions made in the gallery
+    _bibIframe.src = _bibBase;
+    _bibOverlay.classList.add('open');
+  }
+
   document.getElementById('bib-overlay-close').addEventListener('click', _closeBib);
   _bibOverlay.addEventListener('click', e => { if (e.target === _bibOverlay) _closeBib(); });
+
+  // Primary signal: postMessage from iframe
   window.addEventListener('message', e => {
     if (e.data?.type === 'biblioteca:done') _closeBib();
+  });
+  // Fallback signal: storage event (fires cross-frame on same origin)
+  window.addEventListener('storage', e => {
+    if (e.key === 'biblioteca:signal') _closeBib();
   });
 
   // "+" button — opens biblioteca overlay

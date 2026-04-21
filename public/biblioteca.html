@@ -1704,8 +1704,10 @@ function goToDesigner() {
   if (!CART.size) return;
   _persistCart();
   if (window.parent !== window) {
-    // Running inside designer overlay iframe — signal back via postMessage
-    window.parent.postMessage({ type: 'biblioteca:done' }, '*');
+    // Running inside designer overlay iframe
+    // Signal back via postMessage (primary) + localStorage storage event (fallback)
+    try { localStorage.setItem('biblioteca:signal', Date.now()); } catch(e) {}
+    try { window.parent.postMessage({ type: 'biblioteca:done' }, '*'); } catch(e) {}
   } else {
     (window.top || window).location.href = (window._appBase || '') + '/designer';
   }
