@@ -100,6 +100,13 @@ body {
 }
 .tc-dpad-center:hover { background: rgba(40,40,40,.9) !important; }
 #shirt-colors { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 90px; margin-bottom: 2px; }
+@keyframes tc-spin { to { transform: rotate(360deg); } }
+.tc-spin-btn.active {
+  background: #111 !important; color: #fff !important; border-color: #111 !important;
+}
+.tc-spin-btn.active span, .tc-spin-btn.active {
+  animation: tc-spin 1s linear infinite;
+}
 .shirt-swatch {
   width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
   border: 1.5px solid rgba(0,0,0,.2); cursor: pointer;
@@ -618,13 +625,16 @@ body {
         <canvas id="tshirt-mini" title="Vista opuesta"></canvas>
         <!-- Overlay controls — float over the 3D viewport -->
         <div id="tshirt-controls">
-          <!-- Bottom-left: Tamaño -->
+          <!-- Bottom-left: Tamaño + Girar camisa -->
           <div class="tc-overlay tc-overlay-size">
             <span class="tc-lbl">Tamaño</span>
             <div class="tc-row-btns">
               <button class="tc-icon-btn" id="btn-print-smaller" title="Reducir">−</button>
               <button class="tc-icon-btn" id="btn-print-larger"  title="Aumentar">+</button>
             </div>
+            <div style="width:100%;height:1px;background:rgba(0,0,0,.08);margin:2px 0"></div>
+            <span class="tc-lbl">Girar camisa</span>
+            <button class="tc-icon-btn tc-spin-btn" id="btn-autorotate" title="Activar rotación automática">↻</button>
           </div>
           <!-- Bottom-right: Color + D-pad -->
           <div class="tc-overlay tc-overlay-move">
@@ -2159,10 +2169,9 @@ const TshirtPreview = (() => {
     _ctrl.maxDistance = 10;
     _ctrl.enableDamping = true;
     _ctrl.dampingFactor = 0.06;
+    _ctrl.autoRotate = false;
+    _ctrl.autoRotateSpeed = 2.0;
     _ctrl.target.set(0, 0, 0);
-    // On mobile use arrow/size buttons — fully disable OrbitControls touch
-    const _isMobile = window.matchMedia('(max-width: 639px)').matches;
-    if (_isMobile) _ctrl.enabled = false;
     _ctrl.update();
 
     // Mini secondary view (opposite side)
@@ -2273,7 +2282,6 @@ const TshirtPreview = (() => {
       const w = vp.clientWidth, h = vp.clientHeight;
       if (!w || !h) return;
       _cam.aspect = w / h; _cam.updateProjectionMatrix(); _ren.setSize(w, h);
-      _ctrl.enabled = !window.matchMedia('(max-width: 639px)').matches;
     }).observe(vp);
 
     // ── Drag estampado: hover sobre el estampado → cursor move, arrastrar lo mueve ──
@@ -2422,6 +2430,11 @@ const TshirtPreview = (() => {
     getPrintSurface: () => ({ maxW: _printMaxW, maxH: _printMaxH, scale: _printScale }),
     /** Dimensiones actuales del decal (panel proyectado en la camisa) */
     getDecalDims: () => _getDecalDims(),
+    /** Alterna la rotación automática horizontal; devuelve el nuevo estado */
+    toggleAutoRotate: () => {
+      _ctrl.autoRotate = !_ctrl.autoRotate;
+      return _ctrl.autoRotate;
+    },
   };
 })();
 
@@ -2815,8 +2828,14 @@ function _saveCanvasState() {
   fitCanvas();
   updateToolbar();
 
+  // Auto-rotate toggle
+  document.getElementById('btn-autorotate').addEventListener('click', () => {
+    const on = TshirtPreview.toggleAutoRotate();
+    document.getElementById('btn-autorotate').classList.toggle('active', on);
+  });
+
   // Stamp position arrow buttons
-  const _MOVE_STEP = 0.05;
+  const _MOVE_STEP = 0.02;
   document.getElementById('btn-print-up').addEventListener('click', () => {
     const o = TshirtPreview.getOffset();
     TshirtPreview.setOffset(o.x, Math.min(0.4, o.y + _MOVE_STEP));
