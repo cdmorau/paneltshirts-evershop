@@ -64,15 +64,35 @@ body {
 }
 #tshirt-viewport { flex: 1; overflow: hidden; background: #dadada; }
 #tshirt-controls {
-  height: 52px; background: #fff; border-top: var(--border);
-  display: flex; align-items: center; gap: 16px; padding: 0 16px;
+  background: #fff; border-top: var(--border);
+  display: flex; align-items: center; gap: 20px; padding: 10px 16px;
   flex-shrink: 0;
 }
-.tc-lbl { color: #999; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
-.tc-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; white-space: nowrap; }
-.tc-row input[type=range] { width: 80px; accent-color: #333; cursor: pointer; }
-.tc-sep { width: 1px; height: 26px; background: #e0e0e0; }
-#shirt-colors { display: flex; gap: 5px; align-items: center; }
+.tc-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.tc-lbl { color: #999; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+.tc-row-btns { display: flex; gap: 3px; }
+.tc-icon-btn {
+  width: 34px; height: 34px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: bold; border-radius: 6px;
+  background: #f4f4f4; border: 1px solid #ccc; cursor: pointer;
+  transition: background .1s, border-color .1s;
+}
+.tc-icon-btn:hover { background: #e0e0e0; border-color: #888; }
+.tc-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+  gap: 3px;
+}
+.tc-dpad-center {
+  background: #111 !important; color: #fff !important;
+  border-color: #111 !important; font-size: 10px !important;
+  letter-spacing: .5px;
+}
+.tc-dpad-center:hover { background: #333 !important; }
+.tc-sep { width: 1px; height: 36px; background: #e8e8e8; align-self: center; }
+#shirt-colors { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; max-width: 80px; }
 .shirt-swatch {
   width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
   border: 1.5px solid rgba(0,0,0,.2); cursor: pointer;
@@ -415,8 +435,7 @@ body {
 ═══════════════════════════════════════════ */
 @media (max-width: 1099px) {
   #gallery { width: 140px; }
-  #tshirt-controls { gap: 10px; padding: 0 10px; }
-  .tc-lbl { font-size: 10px; }
+  #tshirt-controls { gap: 14px; padding: 10px; }
 }
 
 /* ═══════════════════════════════════════════
@@ -476,6 +495,7 @@ body {
 
   /* Touch: sin scroll del browser sobre el canvas */
   #canvas { touch-action: none; }
+  #tshirt-viewport { touch-action: none; }
   /* Resize handles ocultos */
   .rh { display: none !important; }
   /* Dividers: área táctil mínima */
@@ -505,13 +525,14 @@ body {
     flex-direction: column;
   }
   #main[data-tab="camiseta"] #tshirt-controls {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    height: 52px;
+    justify-content: center;
+    flex-wrap: wrap;
     flex-shrink: 0;
-    padding: 0 12px;
-    gap: 12px;
+    padding: 10px 12px;
+    gap: 14px;
   }
+  .tc-icon-btn { width: 40px; height: 40px; font-size: 18px; }
+  .tc-dpad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); }
   #main[data-tab="camiseta"] #btn-tc-toggle { display: flex; }
   #main[data-tab="camiseta"] #tshirt-mini { width: 80px; height: 100px; }
 
@@ -595,21 +616,39 @@ body {
         <canvas id="tshirt-mini" title="Vista opuesta"></canvas>
       </div>
       <div id="tshirt-controls">
-        <span class="tc-lbl">Tamaño</span>
-        <button class="tbtn" id="btn-print-smaller" style="font-size:15px;padding:2px 9px;line-height:1">−</button>
-        <button class="tbtn" id="btn-print-larger"  style="font-size:15px;padding:2px 9px;line-height:1">+</button>
+        <!-- Tamaño -->
+        <div class="tc-group">
+          <span class="tc-lbl">Tamaño</span>
+          <div class="tc-row-btns">
+            <button class="tc-icon-btn" id="btn-print-smaller" title="Reducir">−</button>
+            <button class="tc-icon-btn" id="btn-print-larger"  title="Aumentar">+</button>
+          </div>
+        </div>
         <div class="tc-sep"></div>
-        <span class="tc-lbl">Mover</span>
-        <button class="tbtn" id="btn-print-up"    style="padding:4px 9px;font-size:13px">↑</button>
-        <button class="tbtn" id="btn-print-left"  style="padding:4px 9px;font-size:13px">←</button>
-        <button class="tbtn" id="btn-reset-print" style="font-size:11px;padding:4px 10px">Centrar</button>
-        <button class="tbtn" id="btn-print-right" style="padding:4px 9px;font-size:13px">→</button>
-        <button class="tbtn" id="btn-print-down"  style="padding:4px 9px;font-size:13px">↓</button>
+        <!-- Mover (D-pad) -->
+        <div class="tc-group">
+          <span class="tc-lbl">Mover estampado</span>
+          <div class="tc-dpad">
+            <span></span>
+            <button class="tc-icon-btn" id="btn-print-up"    title="Arriba">↑</button>
+            <span></span>
+            <button class="tc-icon-btn" id="btn-print-left"  title="Izquierda">←</button>
+            <button class="tc-icon-btn tc-dpad-center" id="btn-reset-print" title="Centrar estampado">●</button>
+            <button class="tc-icon-btn" id="btn-print-right" title="Derecha">→</button>
+            <span></span>
+            <button class="tc-icon-btn" id="btn-print-down"  title="Abajo">↓</button>
+            <span></span>
+          </div>
+        </div>
+        <div class="tc-sep"></div>
+        <!-- Colores -->
+        <div class="tc-group">
+          <span class="tc-lbl">Color</span>
+          <div id="shirt-colors"></div>
+        </div>
         <input type="hidden" id="print-size" value="100">
         <input type="hidden" id="print-x"    value="0">
         <input type="hidden" id="print-y"    value="0">
-        <div class="tc-sep"></div>
-        <div id="shirt-colors"></div>
       </div>
     </div>
   </div>
@@ -2120,11 +2159,16 @@ const TshirtPreview = (() => {
 
     _ctrl = new THREE.OrbitControls(_cam, _ren.domElement);
     _ctrl.enablePan = false;
-    _ctrl.minDistance = 0.12;   // permite zoom muy cercano
+    _ctrl.minDistance = 0.12;
     _ctrl.maxDistance = 10;
     _ctrl.enableDamping = true;
     _ctrl.dampingFactor = 0.06;
     _ctrl.target.set(0, 0, 0);
+    // On mobile the arrow buttons are the primary control — disable orbit drag
+    if (window.matchMedia('(max-width: 639px)').matches) {
+      _ctrl.enableRotate = false;
+      _ctrl.enableZoom   = false;
+    }
     _ctrl.update();
 
     // Mini secondary view (opposite side)
@@ -2930,4 +2974,3 @@ function _saveCanvasState() {
 </script>
 </body>
 </html>
-11
