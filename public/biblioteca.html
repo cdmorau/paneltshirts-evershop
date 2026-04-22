@@ -156,8 +156,12 @@ body {
   cursor: pointer;
   outline: 2px solid transparent;
   transition: outline-color .1s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.lib-cell:hover { outline-color: var(--sel); }
+@media (hover: hover) {
+  .lib-cell:hover { outline-color: var(--sel); }
+}
 .lib-cell.selected { outline-color: var(--sel); outline-width: 3px; }
 
 .lib-cell img {
@@ -178,9 +182,13 @@ body {
   opacity: 0;
   transition: opacity .15s;
   z-index: 5;
-  pointer-events: none;
+  pointer-events: none; /* overlay nunca absorbe clicks — los tags sí */
 }
-.lib-cell:hover .lib-cell-overlay { opacity: 1; pointer-events: all; }
+@media (hover: hover) {
+  .lib-cell:hover .lib-cell-overlay { opacity: 1; }
+}
+.lib-cell.selected .lib-cell-overlay { opacity: 1; }
+.lib-tag { pointer-events: all; touch-action: manipulation; }
 
 .lib-cell-num {
   display: block;
@@ -220,6 +228,14 @@ body {
   color: #aaa;
   font-size: 13px;
   letter-spacing: 1px;
+}
+
+/* Bottom sheet + overlay + FAB: ocultos en desktop por defecto — solo visibles vía media query mobile */
+#lib-cart-sheet,
+#lib-sheet-overlay,
+#lib-cart-fab { display: none !important; }
+@media (max-width: 640px) {
+  #lib-cart-sheet { display: flex !important; }
 }
 
 /* ── RIGHT: CART ── */
@@ -1196,8 +1212,16 @@ function renderLibLeaf(node, x, y, w, h, parent) {
   // Highlight if already in cart
   if (CART.has(node.imageId)) el.classList.add('selected');
 
-  // Click → add to cart
-  el.addEventListener('click', e => {
+  // Tap/click → toggle cart (una sola acción para touch + mouse)
+  let _tapX = 0, _tapY = 0, _tapMoved = false;
+  el.addEventListener('pointerdown', e => {
+    _tapX = e.clientX; _tapY = e.clientY; _tapMoved = false;
+  });
+  el.addEventListener('pointermove', e => {
+    if (Math.abs(e.clientX - _tapX) > 10 || Math.abs(e.clientY - _tapY) > 10) _tapMoved = true;
+  });
+  el.addEventListener('pointerup', e => {
+    if (_tapMoved) return;
     if (e.target.classList.contains('lib-tag')) return;
     cartAdd(node.imageId);
   });
@@ -1703,9 +1727,12 @@ function renderCart() {
 function goToDesigner() {
   if (!CART.size) return;
   _persistCart();
-  if (window.parent !== window) {
-    // Running inside designer overlay iframe
-    // Signal back via postMessage (primary) + localStorage storage event (fallback)
+  // Caso 1: biblioteca.html dentro del overlay del designer.
+  //   parent = designer.html, top = página EverShop /designer  →  parent !== top
+  // Caso 2: biblioteca.html dentro del BibliotecaIframe (acceso por navbar /biblioteca).
+  //   parent = página EverShop /biblioteca, top = misma  →  parent === top
+  const inDesignerOverlay = (window.parent !== window) && (window.parent !== window.top);
+  if (inDesignerOverlay) {
     try { localStorage.setItem('biblioteca:signal', Date.now()); } catch(e) {}
     try { window.parent.postMessage({ type: 'biblioteca:done' }, '*'); } catch(e) {}
   } else {

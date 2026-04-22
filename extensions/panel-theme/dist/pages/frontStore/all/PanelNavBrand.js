@@ -17,6 +17,6 @@ export default function PanelNavBrand() {
     }));
 }
 export const layout = {
-    areaId: 'headerMiddleLeft',
+    areaId: 'headerMiddleCenter',
     sortOrder: 5
 };

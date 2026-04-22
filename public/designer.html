@@ -171,11 +171,22 @@ body {
 .thumb {
   aspect-ratio: 1; background: #eee; cursor: grab; overflow: hidden;
   border: 1px solid #ddd; position: relative; transition: border-color .12s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .thumb:active { cursor: grabbing; }
 .thumb.dragging { opacity: .5; }
-.thumb:hover { border-color: #888; }
+@media (hover: hover) {
+  .thumb:hover { border-color: #888; }
+}
 .thumb.hi { border-color: var(--sel) !important; box-shadow: 0 0 0 1px var(--sel); }
+
+/* Modo "asignar a celda pendiente" — ocultar controles irrelevantes para simplificar */
+body.pending-assign .thumb-del,
+body.pending-assign #gallery-clear-all,
+body.pending-assign #gallery-search,
+body.pending-assign .add-panels-btn,
+body.pending-assign .auto-badge { display: none !important; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .12s; filter: var(--img-filter); }
 .thumb:hover img { opacity: .85; }
 .thumb-lbl {
@@ -256,9 +267,9 @@ body {
 }
 
 .cell-btns {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%,-50%);
-  display: flex; gap: 5px; opacity: 0; pointer-events: none;
+  position: absolute; bottom: 6px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 4px; opacity: 0; pointer-events: none;
   transition: opacity .15s; z-index: 15;
 }
 .cell:hover .cell-btns,
@@ -266,13 +277,13 @@ body {
 
 .sbtn {
   background: rgba(255,255,255,.96); color: #222; border: 1px solid #999;
-  width: 46px; height: 50px; cursor: pointer;
+  width: 40px; height: 38px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px;
-  transition: all .1s; font-size: 9px; letter-spacing: .8px;
-  font-family: var(--font);
+  justify-content: center; gap: 2px;
+  transition: all .1s; font-size: 8px; letter-spacing: .6px;
+  font-family: var(--font); border-radius: 3px;
 }
-.sbtn svg { display: block; flex-shrink: 0; }
+.sbtn svg { display: block; flex-shrink: 0; width: 14px; height: 14px; }
 .sbtn:hover { background: #222; border-color: #222; color: #fff; }
 
 .cell-del {
@@ -295,6 +306,49 @@ body {
 .cell-lock.locked { opacity: 1; color: #e67e22; background: rgba(255,255,255,0.95); }
 
 .cell.dragging { opacity: 0.45; cursor: grabbing; }
+
+.cell-add-btn {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px; height: 40px;
+  background: rgba(0,0,0,0.08);
+  border: 1.5px dashed rgba(0,0,0,0.25);
+  border-radius: 50%;
+  font-size: 22px; line-height: 1; color: rgba(0,0,0,0.35);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s; pointer-events: all;
+}
+.cell-add-btn:hover { background: rgba(0,0,0,0.16); color: rgba(0,0,0,0.7); }
+
+/* Celda destino del botón + — resalta pulsando hasta que se asigna */
+.cell.pending-target {
+  outline: 3px solid #111;
+  outline-offset: -3px;
+  animation: pending-pulse 1.2s ease-in-out infinite;
+}
+.cell.pending-target .cell-add-btn {
+  background: #111; color: #fff; border-color: #111;
+  animation: pending-btn-pulse 1.2s ease-in-out infinite;
+}
+@keyframes pending-pulse {
+  0%, 100% { outline-color: rgba(17,17,17,1); }
+  50%      { outline-color: rgba(17,17,17,0.3); }
+}
+@keyframes pending-btn-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.12); }
+}
+
+/* Hint banner en galería cuando hay celda pendiente */
+body.pending-assign #gallery::before {
+  content: 'Elige el panel para la celda destacada';
+  display: block; padding: 10px 12px; margin-bottom: 10px;
+  background: #111; color: #fff; font-size: 10px; font-weight: 600;
+  letter-spacing: 1.2px; text-transform: uppercase; text-align: center;
+  border-radius: 4px;
+}
+body.pending-assign .thumb { cursor: cell; }
+body.pending-assign .thumb:hover { outline: 3px solid #111; outline-offset: -3px; }
 
 .cell-rot-handle {
   position: absolute; top: -22px; right: -2px;
@@ -330,11 +384,13 @@ body {
 
 .div-del {
   position: absolute; background: rgba(255,255,255,.95); color: #cc2222;
-  border: 1px solid #cc2222; width: 22px; height: 22px; cursor: pointer;
-  font-size: 12px; display: none; align-items: center; justify-content: center;
-  z-index: 25; border-radius: 2px;
+  border: 1px solid #cc2222; width: 26px; height: 26px; cursor: pointer;
+  font-size: 13px; display: none; align-items: center; justify-content: center;
+  z-index: 25; border-radius: 50%;
 }
-.divider:hover .div-del { display: flex; }
+.divider.selected .div-del { display: flex; }
+.divider.selected .dline { background: var(--divider-hover); }
+.divider.selected .dhandle { opacity: 1; background: #111; }
 .div-del:hover { background: #cc2222; border-color: #cc2222; color: #fff; }
 
 /* ── MODO LIMPIO (divisores ocultos) ── */
@@ -343,9 +399,13 @@ body {
 #canvas.clean .junction,
 #canvas.clean .cell-btns,
 #canvas.clean .cell-del,
-#canvas.clean .cell-lock  { display: none !important; }
+#canvas.clean .cell-lock,
+#canvas.clean .cell-add-btn,
+#canvas.clean .cell-rot-handle,
+#canvas.clean .dhandle    { display: none !important; }
 #canvas.clean .divider   { cursor: default; pointer-events: none; }
 #canvas.clean .cell      { cursor: default; }
+#canvas.clean .cell.pending-target { outline: none; animation: none; }
 
 /* ── JUNCTIONS ── */
 .junction {
@@ -360,13 +420,21 @@ body {
 
 /* ── CANVAS PLACEHOLDER ── */
 .canvas-ph {
-  position: absolute; inset: 0; pointer-events: none;
+  position: absolute; inset: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 10px;
+  gap: 10px; pointer-events: none;
 }
 .canvas-ph svg { opacity: .18; }
 .canvas-ph span { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #aaa; }
+.canvas-ph-btn {
+  pointer-events: all;
+  background: #111; color: #fff; border: none; cursor: pointer;
+  font: 600 10px var(--font); letter-spacing: 1.2px; text-transform: uppercase;
+  padding: 9px 18px; border-radius: 4px; margin-top: 4px;
+  transition: background .1s;
+}
+.canvas-ph-btn:hover { background: #333; }
 
 /* ── BADGE DE COPIAS ── */
 .auto-badge {
@@ -504,12 +572,13 @@ body {
   /* Viewport real en iOS */
   body { height: 100dvh; flex-direction: column; }
 
-  /* Tab bar */
+  /* Tab bar — fijo en la parte inferior, fino */
   #mobile-tab-bar {
     display: flex;
-    height: 44px;
+    order: 99;
+    height: 34px;
     background: #fff;
-    border-bottom: 1px solid #e0e0e0;
+    border-top: 1px solid #e0e0e0;
     flex-shrink: 0;
     z-index: 50;
   }
@@ -517,25 +586,25 @@ body {
     flex: 1;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    font: 11px 'Courier New', monospace;
+    border-top: 2px solid transparent;
+    font: 9px 'Courier New', monospace;
     font-weight: 600;
-    letter-spacing: .5px;
+    letter-spacing: .4px;
     text-transform: uppercase;
     color: #999;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     transition: color .15s, border-color .15s;
     padding: 0 4px;
   }
   .mtab.active {
     color: #111;
-    border-bottom-color: #111;
+    border-top-color: #111;
   }
-  .mtab-icon { font-size: 15px; }
+  .mtab-icon { font-size: 13px; }
 
   /* Layout: stack vertical */
   #main { flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
@@ -548,17 +617,45 @@ body {
   /* Touch: sin scroll del browser sobre el canvas */
   #canvas { touch-action: none; }
   #tshirt-viewport { touch-action: none; }
-  /* Resize handles ocultos */
-  .rh { display: none !important; }
-  /* Dividers: área táctil mínima */
-  .divider   { touch-action: none; }
-  .divider-h { min-height: 20px; }
-  .divider-v { min-width:  20px; }
+  /* Resize handle móvil: solo esquina inferior-derecha */
+  .rh-n, .rh-s, .rh-e, .rh-w,
+  .rh-ne, .rh-nw, .rh-sw { display: none !important; }
+  .rh-se {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    bottom: -18px !important;
+    right: -18px !important;
+    background: #111 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4) !important;
+    touch-action: none;
+    cursor: nwse-resize;
+  }
+  .rh-se::after {
+    content: '⤡' !important;
+    width: auto !important;
+    height: auto !important;
+    background: none !important;
+    border-radius: 0 !important;
+    color: #fff !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+  }
+  /* Dividers: área táctil y handle más visible en mobile */
+  .divider { touch-action: none; }
+  .dhandle { opacity: 0.6 !important; }
+  .divider-h .dhandle { width: 44px !important; height: 8px !important; border-radius: 4px !important; }
+  .divider-v .dhandle { width: 8px !important; height: 44px !important; border-radius: 4px !important; }
+  /* Ocultar labels de thumbs en la galería del designer (UI más simple) */
+  .thumb-lbl { display: none; }
 
   /* ── TAB: EDITOR (default) ── */
-  #main[data-tab="editor"] #work-area { flex-direction: column; }
-  #main[data-tab="editor"] #canvas-col { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  #main[data-tab="editor"] #canvas-wrapper { padding: 12px; }
+  #main[data-tab="editor"] #work-area { flex-direction: column; overflow: visible; }
+  #main[data-tab="editor"] #canvas-col { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: visible; }
+  #main[data-tab="editor"] #canvas-wrapper { padding: 22px; }
   #main[data-tab="editor"] #tshirt-panel { display: none; }
   #main[data-tab="editor"] #panel-divider { display: none; }
   #main[data-tab="editor"] #gallery { display: none; }
@@ -583,7 +680,7 @@ body {
   .tc-overlay-size { bottom: 16px; left: 12px; }
   .tc-overlay-move { bottom: 16px; right: 12px; }
   #main[data-tab="camiseta"] #btn-tc-toggle { display: flex; }
-  #main[data-tab="camiseta"] #tshirt-mini { width: 80px; height: 100px; }
+  #main[data-tab="camiseta"] #tshirt-mini { width: 62px; height: 78px; }
 
   /* ── TAB: IMÁGENES ── */
   #main[data-tab="imagenes"] #work-area { display: none; }
@@ -615,9 +712,9 @@ body {
 <body>
 
 <div id="mobile-tab-bar">
+  <button class="mtab" data-tab="imagenes"><span class="mtab-icon">🖼</span> Paneles</button>
   <button class="mtab active" data-tab="editor"><span class="mtab-icon">✏️</span> Editor</button>
   <button class="mtab" data-tab="camiseta"><span class="mtab-icon">👕</span> Camiseta</button>
-  <button class="mtab" data-tab="imagenes"><span class="mtab-icon">🖼</span> Paneles</button>
 </div>
 
 <div id="main" data-tab="editor">
@@ -655,6 +752,7 @@ body {
         <div id="bg-wrapper">
           <button id="bg-btn" title="Color de fondo"></button>
         </div>
+        <button class="tbtn" id="btn-clean-view" title="Vista limpia (sin controles ni divisiones)">👁</button>
         <div id="toolbar-spacer"></div>
         <button class="tbtn" id="btn-clear" title="Limpiar">🧹</button>
       </div>
@@ -1121,6 +1219,9 @@ function computeJunctions(dividers, cW, cH) {
 // ══════════════════════════════════════════════════════
 //  RENDERER
 // ══════════════════════════════════════════════════════
+// ID del divisor actualmente seleccionado (muestra su X de eliminar)
+let _selectedDividerId = null;
+
 const Renderer = (() => {
   let _canvas = null;
   let _cW = 0, _cH = 0;
@@ -1237,22 +1338,39 @@ const Renderer = (() => {
       el.appendChild(rotHandle);
     }
 
-    const btns = document.createElement('div');
-    btns.className = 'cell-btns';
+    if (node.imageId === null) {
+      // Celda vacía: solo botón + (sin FILAS/COLS — dividir una celda vacía no aporta)
+      const addBtn = document.createElement('button');
+      addBtn.className = 'cell-add-btn';
+      addBtn.textContent = _pendingCellId === node.id ? '✓' : '+';
+      addBtn.title = _pendingCellId === node.id
+        ? 'Celda en espera — toca un panel o clic aquí para cancelar'
+        : 'Asignar panel a esta celda';
+      addBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        _setPendingCellId(_pendingCellId === node.id ? null : node.id);
+      });
+      el.appendChild(addBtn);
+      if (_pendingCellId === node.id) el.classList.add('pending-target');
+    } else {
+      // Celda con imagen: botones FILAS/COLS en esquina inferior (no tapan la imagen)
+      const btns = document.createElement('div');
+      btns.className = 'cell-btns';
 
-    const bh = document.createElement('button');
-    bh.className = 'sbtn'; bh.title = 'Dividir en filas';
-    bh.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="3" y1="10" x2="17" y2="10"/></svg><span>FILAS</span>`;
-    bh.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'h' }); });
+      const bh = document.createElement('button');
+      bh.className = 'sbtn'; bh.title = 'Dividir en filas';
+      bh.innerHTML = `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="3" y1="10" x2="17" y2="10"/></svg><span>FILAS</span>`;
+      bh.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'h' }); });
 
-    const bv = document.createElement('button');
-    bv.className = 'sbtn'; bv.title = 'Dividir en columnas';
-    bv.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="10" y1="3" x2="10" y2="17"/></svg><span>COLS</span>`;
-    bv.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'v' }); });
+      const bv = document.createElement('button');
+      bv.className = 'sbtn'; bv.title = 'Dividir en columnas';
+      bv.innerHTML = `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="1"/><line x1="10" y1="3" x2="10" y2="17"/></svg><span>COLS</span>`;
+      bv.addEventListener('click', e => { e.stopPropagation(); Store.dispatch({ type: 'SPLIT', nodeId: node.id, dir: 'v' }); });
 
-    btns.appendChild(bh);
-    btns.appendChild(bv);
-    el.appendChild(btns);
+      btns.appendChild(bh);
+      btns.appendChild(bv);
+      el.appendChild(btns);
+    }
 
     el.addEventListener('click', e => {
       e.stopPropagation();
@@ -1295,20 +1413,21 @@ const Renderer = (() => {
       ax = x; ay = y;  aw = w; ah = my - y;
       bx = x; by = my; bw = w; bh = (y + h) - my;
 
+      const hit = window.innerWidth < 768 ? 28 : 10;
       dvEl = document.createElement('div');
       dvEl.className = 'divider divider-h';
       dvEl.dataset.id = node.id;
-      // 10px hit area centred on the midline
-      dvEl.style.cssText = `left:${x}px;top:${my - 5}px;width:${w}px;height:10px;`;
+      dvEl.style.cssText = `left:${x}px;top:${my - hit/2}px;width:${w}px;height:${hit}px;`;
     } else {
       const mx = x + w * r;
       ax = x;  ay = y; aw = mx - x; ah = h;
       bx = mx; by = y; bw = (x + w) - mx; bh = h;
 
+      const hit = window.innerWidth < 768 ? 28 : 10;
       dvEl = document.createElement('div');
       dvEl.className = 'divider divider-v';
       dvEl.dataset.id = node.id;
-      dvEl.style.cssText = `left:${mx - 5}px;top:${y}px;width:10px;height:${h}px;`;
+      dvEl.style.cssText = `left:${mx - hit/2}px;top:${y}px;width:${hit}px;height:${h}px;`;
     }
 
     const line = document.createElement('div');
@@ -1329,9 +1448,18 @@ const Renderer = (() => {
     });
     dvEl.appendChild(del);
 
+    // Mantener el estado "selected" si coincide con el divider activo
+    if (_selectedDividerId === node.id) dvEl.classList.add('selected');
+
     dvEl.addEventListener('pointerdown', e => {
       if (e.target === del) return;
       e.preventDefault(); e.stopPropagation();
+      // Marcar este divisor como seleccionado (muestra la X)
+      _selectedDividerId = node.id;
+      document.querySelectorAll('.divider.selected').forEach(d => {
+        if (d !== dvEl) d.classList.remove('selected');
+      });
+      dvEl.classList.add('selected');
       _startDividerDrag(e, node.id, node.dir, { x, y, w, h });
     });
 
@@ -1453,6 +1581,8 @@ const Renderer = (() => {
 
   function render(state) {
     if (!_canvas) return;
+    // Validar pending cell id contra el árbol actual
+    if (typeof _validatePendingCellId === 'function') _validatePendingCellId();
     MARGIN = Math.round((_cW + _cH) / 2 * MARGIN_PCT / 100);
     const m = MARGIN;
     const frag = document.createDocumentFragment();
@@ -1466,7 +1596,7 @@ const Renderer = (() => {
         <rect x="4" y="4" width="28" height="28" rx="2"/>
         <line x1="4" y1="18" x2="32" y2="18"/>
         <line x1="18" y1="4" x2="18" y2="32"/>
-      </svg><span>Hover para dividir · Arrastra imágenes</span>`;
+      </svg><span>Lienzo vacío</span><button class="canvas-ph-btn" data-action="open-bib">Agregar paneles</button>`;
       frag.appendChild(ph);
     }
 
@@ -1662,8 +1792,8 @@ const AutoLayout = (() => {
     const availW  = Math.max(wrapper.clientWidth  - 44, 200);
     const availH  = Math.max(wrapper.clientHeight - 44, 200);
 
-    // Ratio objetivo: en generación usa el espacio disponible; en refit mantiene la proporción actual
-    const targetR = noShuffle ? (PROP_W / PROP_H) : (availW / availH);
+    // Ratio objetivo: siempre la proporción actual del usuario (PROP_W/PROP_H)
+    const targetR = PROP_W / PROP_H;
 
     // Probar k=1..n filas, elegir la que minimiza desviación de targetR + varianza de alturas
     let bestRows = [input], bestScore = Infinity;
@@ -1687,11 +1817,14 @@ const AutoLayout = (() => {
     const totalInv = invSums.reduce((a, b) => a + b, 0);
     const normH    = invSums.map(inv => inv / (totalInv || 1));
 
-    // En generación: actualizar canvas al ratio natural (cero espacios blancos)
+    // En generación: ajustar canvas al ratio natural si está dentro de ±35% del objetivo
     if (!noShuffle) {
       const naturalR = totalInv > 0 ? 1 / totalInv : targetR;
-      const [nW, nH] = toNiceRatio(naturalR);
-      PROP_W = nW; PROP_H = nH;
+      const userR    = PROP_W / PROP_H;
+      if (naturalR > userR * 0.65 && naturalR < userR * 1.54) {
+        const [nW, nH] = toNiceRatio(naturalR);
+        PROP_W = nW; PROP_H = nH;
+      }
     }
 
     _panoramaH = 0;
@@ -1894,9 +2027,15 @@ const TshirtPreview = (() => {
 
   // ── Resize canvas to panel proportions (no distortion) ──────────
   function _resizePrintCanvas() {
-    const SCALE = 150;
-    const w = Math.round((PROP_W || 7)  * SCALE);
-    const h = Math.round((PROP_H || 11) * SCALE);
+    // Densidad alta para que los paneles no se pixelen al acercar la cámara.
+    // Limitamos el lado máximo a 4096 (GPU safe) y mantenemos el aspect ratio.
+    const TARGET_LONG = 3300;  // lado largo objetivo en px (antes 1650)
+    const pw = Math.max(0.1, PROP_W || 7), ph = Math.max(0.1, PROP_H || 11);
+    const ratio = ph / pw;
+    let w, h;
+    if (ph >= pw) { h = TARGET_LONG; w = Math.round(h / ratio); }
+    else          { w = TARGET_LONG; h = Math.round(w * ratio); }
+    w = Math.min(w, 4096); h = Math.min(h, 4096);
     if (_printCanvas.width !== w || _printCanvas.height !== h) {
       _printCanvas.width  = w;
       _printCanvas.height = h;
@@ -2186,7 +2325,8 @@ const TshirtPreview = (() => {
 
     const W = vp.clientWidth || 500, H = vp.clientHeight || 600;
     _cam = new THREE.PerspectiveCamera(34, W / H, 0.05, 100);
-    _cam.position.set(0, 0.1, 1.3);   // ~3× más cerca
+    const _isMobile = window.innerWidth < 768;
+    _cam.position.set(0, _isMobile ? 0.28 : 0.1, _isMobile ? 2.3 : 1.3);
 
     _ren = new THREE.WebGLRenderer({ antialias: true });
     _ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -2356,7 +2496,9 @@ const TshirtPreview = (() => {
       // Si NO está sobre el estampado → no llamamos stopPropagation → OrbitControls orbita
       _ren.domElement.addEventListener('pointerdown', e => {
         if (e.button !== 0 || !_printHit(e)) return;
-        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        _ctrl.enabled = false;
         _printDrag = true;
         _pdX = e.clientX; _pdY = e.clientY;
         _pdOx = _offX;   _pdOy = _offY;
@@ -2380,6 +2522,7 @@ const TshirtPreview = (() => {
         _ren.domElement.addEventListener(ev, () => {
           if (!_printDrag) return;
           _printDrag = false;
+          _ctrl.enabled = true;
           _ren.domElement.style.cursor = '';
         }, { capture: true })
       );
@@ -2475,9 +2618,18 @@ const TshirtPreview = (() => {
     /** Dimensiones actuales del decal (panel proyectado en la camisa) */
     getDecalDims: () => _getDecalDims(),
     /** Alterna la rotación automática horizontal; devuelve el nuevo estado */
-    toggleAutoRotate: () => {
-      _ctrl.autoRotate = !_ctrl.autoRotate;
-      return _ctrl.autoRotate;
+    cycleAutoRotate: () => {
+      if (!_ctrl.autoRotate) {
+        _ctrl.autoRotate = true;
+        _ctrl.autoRotateSpeed = 12.0;
+        return 1; // girando →
+      } else if (_ctrl.autoRotateSpeed > 0) {
+        _ctrl.autoRotateSpeed = -12.0;
+        return -1; // girando ←
+      } else {
+        _ctrl.autoRotate = false;
+        return 0; // detenido
+      }
     },
   };
 })();
@@ -2578,6 +2730,58 @@ function buildBgDropdown() {
 // ══════════════════════════════════════════════════════
 
 
+// Celda destino cuando el usuario usa el botón + de una celda vacía
+let _pendingCellId = null;
+
+function _setPendingCellId(nodeId) {
+  _pendingCellId = nodeId;
+  document.body.classList.toggle('pending-assign', nodeId !== null);
+  if (nodeId !== null) {
+    Renderer.render(Store.state); // re-render para marcar la celda destino
+    const mainEl = document.getElementById('main');
+    const tabBar = document.getElementById('mobile-tab-bar');
+    if (window.innerWidth < 768) {
+      if (mainEl) mainEl.dataset.tab = 'imagenes';
+      if (tabBar) {
+        tabBar.querySelectorAll('.mtab').forEach(b => b.classList.remove('active'));
+        tabBar.querySelector('.mtab[data-tab="imagenes"]')?.classList.add('active');
+      }
+    } else {
+      const gallery = document.getElementById('gallery');
+      if (gallery) gallery.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  } else {
+    Renderer.render(Store.state);
+  }
+}
+
+function _clearPendingCellId() {
+  if (_pendingCellId !== null) _setPendingCellId(null);
+}
+
+// Encuentra la primera celda vacía (leaf con imageId=null) recorriendo el árbol
+function _findFirstEmptyCellId(node) {
+  if (!node) return null;
+  if (node.type === 'leaf') return node.imageId === null ? node.id : null;
+  if (node.children) {
+    for (const c of node.children) {
+      const r = _findFirstEmptyCellId(c);
+      if (r !== null) return r;
+    }
+  }
+  return null;
+}
+
+// Si el árbol cambia y la celda pendiente dejó de existir (o ya no es leaf vacío), limpiar
+function _validatePendingCellId() {
+  if (_pendingCellId === null) return;
+  const node = PM.find(Store.state.root, _pendingCellId);
+  if (!node || node.type !== 'leaf' || node.imageId !== null) {
+    _pendingCellId = null;
+    document.body.classList.remove('pending-assign');
+  }
+}
+
 /** Creates a thumb div for one image and appends it to grid. */
 function _addThumb(img, grid) {
   const thumb = document.createElement('div');
@@ -2655,15 +2859,40 @@ function _addThumb(img, grid) {
   });
   thumb.addEventListener('dragend', () => thumb.classList.remove('dragging'));
 
-  thumb.addEventListener('click', () => {
-    const { selectedId } = Store.state;
-    if (selectedId) {
-      const node = PM.find(Store.state.root, selectedId);
-      if (!node || node.type !== 'leaf') return;
-      Store.dispatch({ type: 'ASSIGN', nodeId: selectedId, imageId: img.id });
+  // Tap/click → asignar a celda o incrementar count (un solo disparo touch + mouse)
+  function _handleThumbTap() {
+    const wasPending = _pendingCellId !== null;
+    // Prioridad: 1) celda con botón + pendiente, 2) celda seleccionada, 3) primera vacía
+    let targetId = _pendingCellId;
+    if (!targetId) targetId = Store.state.selectedId;
+    if (!targetId) targetId = _findFirstEmptyCellId(Store.state.root);
+
+    const node = targetId ? PM.find(Store.state.root, targetId) : null;
+    if (node && node.type === 'leaf') {
+      Store.dispatch({ type: 'ASSIGN', nodeId: targetId, imageId: img.id });
+      if (wasPending) {
+        _pendingCellId = null;
+        document.body.classList.remove('pending-assign');
+        if (window.innerWidth < 768) {
+          const mainEl = document.getElementById('main');
+          const tabBar = document.getElementById('mobile-tab-bar');
+          if (mainEl) mainEl.dataset.tab = 'editor';
+          if (tabBar) {
+            tabBar.querySelectorAll('.mtab').forEach(b => b.classList.remove('active'));
+            tabBar.querySelector('.mtab[data-tab="editor"]')?.classList.add('active');
+          }
+        }
+      }
     } else {
       setImageCount(img.id, (IMAGE_COUNTS.get(img.id) || 0) + 1);
     }
+  }
+  // Listener único en pointerup para dispar inmediatamente en touch (sin delay iOS)
+  thumb.addEventListener('pointerup', e => {
+    if (!_tDragOk) return;   // fue un scroll, no un tap
+    if (thumb.classList.contains('dragging')) return;  // fue un drag HTML5
+    if (e.target.closest('.thumb-del, .rot-popover')) return;  // tocó X o popover
+    _handleThumbTap();
   });
 
   grid.appendChild(thumb);
@@ -2678,7 +2907,12 @@ function _removeFromGallery(imgId) {
     delete cart[String(imgId)];
     localStorage.setItem('panel-design-cart', JSON.stringify(cart));
   } catch(e) {}
-  Renderer.render(Store.state);
+  if (IMAGE_COUNTS.size > 0) {
+    setTimeout(() => AutoLayout.generateDirect([]), 50);
+  } else {
+    Store.dispatch({ type: 'SET_ROOT', root: PM.leaf() });
+    fitCanvas();
+  }
   TshirtPreview.redrawPrint();
 }
 
@@ -2715,6 +2949,13 @@ function _refreshGallery() {
     const n = parseInt(newCartData?.[String(id)], 10) || 1;
     setImageCount(id, n);
   });
+
+  // Si el usuario tiene una celda pendiente (+), NO auto-regenerar todo el layout:
+  // respetar su elección de llenar solo esa celda. Solo re-render la galería.
+  if (_pendingCellId !== null) {
+    Renderer.render(Store.state);
+    return;
+  }
 
   // Regenerate layout when selection changed
   if (newIds.size > 0) setTimeout(() => AutoLayout.generateDirect([]), 50);
@@ -2845,6 +3086,11 @@ function initGallery() {
       }
     }
   });
+
+  // "Agregar paneles" button inside empty canvas placeholder
+  document.getElementById('canvas').addEventListener('click', e => {
+    if (e.target.closest('[data-action="open-bib"]')) _openBib();
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -2933,6 +3179,16 @@ function _saveCanvasState() {
   document.getElementById('btn-undo').addEventListener('click', () => Store.undo());
   document.getElementById('btn-redo').addEventListener('click', () => Store.redo());
 
+  // Vista limpia (toggle) — oculta divisores, botones y controles del canvas
+  document.getElementById('btn-clean-view').addEventListener('click', () => {
+    const canvas = document.getElementById('canvas');
+    const btn = document.getElementById('btn-clean-view');
+    const on = canvas.classList.toggle('clean');
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '🙈' : '👁';
+    btn.title = on ? 'Volver a vista de edición' : 'Vista limpia (sin controles ni divisiones)';
+  });
+
   // Settings dropdown removed — controls are inline in toolbar
 
   // Background color dropdown
@@ -2954,6 +3210,15 @@ function _saveCanvasState() {
     if (e.target === canvas) Store.dispatch({ type: 'SELECT', nodeId: null });
   });
 
+  // Deseleccionar divisor al click fuera (en cualquier parte que no sea un divisor)
+  document.addEventListener('click', e => {
+    if (_selectedDividerId === null) return;
+    if (!e.target.closest('.divider')) {
+      _selectedDividerId = null;
+      document.querySelectorAll('.divider.selected').forEach(d => d.classList.remove('selected'));
+    }
+  });
+
   // Keyboard
   document.addEventListener('keydown', e => {
     const tag = document.activeElement?.tagName;
@@ -2969,7 +3234,12 @@ function _saveCanvasState() {
         if (node?.imageId !== null) Store.dispatch({ type: 'UNASSIGN', nodeId: selectedId });
       }
     }
-    if (e.key === 'Escape') Store.dispatch({ type: 'SELECT', nodeId: null });
+    if (e.key === 'Escape') {
+      _clearPendingCellId();
+      _selectedDividerId = null;
+      document.querySelectorAll('.divider.selected').forEach(d => d.classList.remove('selected'));
+      Store.dispatch({ type: 'SELECT', nodeId: null });
+    }
   });
 
   // Responsive resize — re-contain canvas to new wrapper size (debounced)
@@ -2985,8 +3255,11 @@ function _saveCanvasState() {
 
   // Auto-rotate toggle
   document.getElementById('btn-autorotate').addEventListener('click', () => {
-    const on = TshirtPreview.toggleAutoRotate();
-    document.getElementById('btn-autorotate').classList.toggle('active', on);
+    const btn = document.getElementById('btn-autorotate');
+    const state = TshirtPreview.cycleAutoRotate();
+    btn.classList.toggle('active', state !== 0);
+    btn.textContent = state === -1 ? '↺' : '↻';
+    btn.title = state === 1 ? 'Girando → (clic para invertir)' : state === -1 ? 'Girando ← (clic para detener)' : 'Activar rotación automática';
   });
 
   // Stamp position arrow buttons

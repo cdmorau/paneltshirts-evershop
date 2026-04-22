@@ -6,7 +6,7 @@ const linkStyle = {
 };
 export default function PanelFooter() {
     return /*#__PURE__*/ React.createElement("footer", {
-        className: "py-12 px-6",
+        className: "py-12 px-6 panel-footer",
         style: {
             backgroundColor: '#fff',
             borderTop: '1px solid oklch(0.92 0 0)'

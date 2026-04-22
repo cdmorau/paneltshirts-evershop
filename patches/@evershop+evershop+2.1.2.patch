@@ -41,6 +41,58 @@ index 74754fb..a9953ea 100644
  };
  const Header = ({ data }) => {
      const tagName = `h${data.level}`;
+diff --git a/node_modules/@evershop/evershop/dist/components/frontStore/catalog/ProductListItemRender.js b/node_modules/@evershop/evershop/dist/components/frontStore/catalog/ProductListItemRender.js
+index 0c0dfcf..400d0a7 100644
+--- a/node_modules/@evershop/evershop/dist/components/frontStore/catalog/ProductListItemRender.js
++++ b/node_modules/@evershop/evershop/dist/components/frontStore/catalog/ProductListItemRender.js
+@@ -3,8 +3,25 @@ import { ProductNoThumbnail } from '@components/common/ProductNoThumbnail.js';
+ import { Button } from '@components/common/ui/Button.js';
+ import { AddToCart } from '@components/frontStore/cart/AddToCart.js';
+ import { _ } from '@evershop/evershop/lib/locale/translate/_';
+-import React from 'react';
++import React, { useState } from 'react';
+ import { toast } from 'react-toastify';
++// Wrapper que usa loading local en lugar del global de cartState
++// (evita que TODOS los botones muestren "Adding..." cuando se agrega UNO).
++function LocalAddToCartButton({ product, qty, onError, buttonClassName }) {
++    const [localLoading, setLocalLoading] = useState(false);
++    return React.createElement(AddToCart, { product, qty, onError }, (state, actions) => React.createElement(Button, {
++        className: buttonClassName,
++        disabled: !state.canAddToCart || localLoading,
++        onClick: async (e) => {
++            e.preventDefault();
++            e.stopPropagation();
++            if (localLoading) return;
++            setLocalLoading(true);
++            try { await actions.addToCart(); }
++            finally { setLocalLoading(false); }
++        }
++    }, localLoading ? _('Adding...') : _('Add to Cart')));
++}
+ export const ProductListItemRender = ({ product, imageWidth, imageHeight, layout = 'grid', showAddToCart = false, customAddToCartRenderer }) => {
+     if (layout === 'list') {
+         return (React.createElement("div", { className: "product__list__item__inner group relative overflow-hidden flex gap-4 p-4" },
+@@ -44,13 +61,11 @@ export const ProductListItemRender = ({ product, imageWidth, imageHeight, layout
+                     product.price.regular < product.price.special ? (React.createElement(React.Fragment, null,
+                     React.createElement("span", { className: "regular-price" }, product.price.regular.text),
+                     React.createElement("span", { className: "special-price" }, product.price.special.text))) : (React.createElement("span", { className: "regular-price" }, product.price.regular.text))))),
+-        showAddToCart && (React.createElement("div", { className: "product__list__actions p-4 invisible transform translate-y-4 transition-all duration-300 ease-in-out group-hover:visible group-hover:translate-y-0" }, customAddToCartRenderer ? (customAddToCartRenderer(product)) : (React.createElement(AddToCart, { product: {
+-                sku: product.sku,
+-                isInStock: product.inventory.isInStock
+-            }, qty: 1, onError: (error) => toast.error(error) }, (state, actions) => (React.createElement(Button, { className: 'w-full', disabled: !state.canAddToCart || state.isLoading, onClick: (e) => {
+-                e.preventDefault();
+-                e.stopPropagation();
+-                actions.addToCart();
+-            } }, state.isLoading ? _('Adding...') : _('Add to Cart')))))))));
++        showAddToCart && (React.createElement("div", { className: "product__list__actions p-4 invisible transform translate-y-4 transition-all duration-300 ease-in-out group-hover:visible group-hover:translate-y-0" }, customAddToCartRenderer ? (customAddToCartRenderer(product)) : (React.createElement(LocalAddToCartButton, {
++                product: { sku: product.sku, isInStock: product.inventory.isInStock },
++                qty: 1,
++                onError: (error) => toast.error(error),
++                buttonClassName: 'w-full'
++            }))))));
+ };
+ //# sourceMappingURL=ProductListItemRender.js.map
+\ No newline at end of file
 diff --git a/node_modules/@evershop/evershop/dist/lib/util/jwt.js b/node_modules/@evershop/evershop/dist/lib/util/jwt.js
 index e4d3ff9..7f26706 100644
 --- a/node_modules/@evershop/evershop/dist/lib/util/jwt.js
@@ -83,6 +135,24 @@ index 2d12711..2192c65 100644
  }
  export function verifyPassword(password) {
      const validator = getValueSync('passwordValidator', () => new ValidatorManager([
+diff --git a/node_modules/@evershop/evershop/dist/lib/webpack/dev/createConfigClient.js b/node_modules/@evershop/evershop/dist/lib/webpack/dev/createConfigClient.js
+index 43c4a0b..4456145 100644
+--- a/node_modules/@evershop/evershop/dist/lib/webpack/dev/createConfigClient.js
++++ b/node_modules/@evershop/evershop/dist/lib/webpack/dev/createConfigClient.js
+@@ -104,7 +104,12 @@ export function createConfigClient(isAdmin = false) {
+     };
+     config.watchOptions = {
+         aggregateTimeout: 300,
+-        ignored: new RegExp('(^|/)[a-z][^/]*.js$'),
++        ignored: [
++            '**/node_modules/**',
++            '**/dist/**/*.js',
++            '**/.evershop/**',
++            '**/build/**'
++        ],
+         poll: 1000
+     };
+     // Enable source maps
 diff --git a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js b/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js
 index f8c51da..9aaccb6 100644
 --- a/node_modules/@evershop/evershop/dist/modules/auth/services/getCookieSecret.js

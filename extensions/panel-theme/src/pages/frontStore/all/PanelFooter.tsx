@@ -9,7 +9,7 @@ const linkStyle: React.CSSProperties = {
 export default function PanelFooter() {
   return (
     <footer
-      className="py-12 px-6"
+      className="py-12 px-6 panel-footer"
       style={{ backgroundColor: '#fff', borderTop: '1px solid oklch(0.92 0 0)' }}
     >
       <div className="max-w-6xl mx-auto">

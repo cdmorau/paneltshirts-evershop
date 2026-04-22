@@ -68,7 +68,7 @@ export default function PanelNavLinks() {
         style: {
             position: 'absolute',
             top: '100%',
-            right: 0,
+            left: 0,
             backgroundColor: '#fff',
             border: '1px solid oklch(0.92 0 0)',
             borderRadius: 'var(--radius)',
@@ -95,6 +95,6 @@ export default function PanelNavLinks() {
         }, link.label)))));
 }
 export const layout = {
-    areaId: 'headerMiddleCenter',
+    areaId: 'headerMiddleLeft',
     sortOrder: 10
 };
