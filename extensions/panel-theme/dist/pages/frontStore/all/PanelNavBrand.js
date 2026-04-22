@@ -11,7 +11,7 @@ export default function PanelNavBrand() {
         src: "/logoPanel.svg",
         alt: "PANEL! T-Shirts",
         style: {
-            height: '40px',
+            height: '44px',
             width: 'auto'
         }
     }));

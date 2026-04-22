@@ -10,7 +10,7 @@ export default function PanelNavBrand() {
       <img
         src="/logoPanel.svg"
         alt="PANEL! T-Shirts"
-        style={{ height: '40px', width: 'auto' }}
+        style={{ height: '44px', width: 'auto' }}
       />
     </a>
   );

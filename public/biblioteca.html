@@ -156,8 +156,12 @@ body {
   cursor: pointer;
   outline: 2px solid transparent;
   transition: outline-color .1s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.lib-cell:hover { outline-color: var(--sel); }
+@media (hover: hover) {
+  .lib-cell:hover { outline-color: var(--sel); }
+}
 .lib-cell.selected { outline-color: var(--sel); outline-width: 3px; }
 
 .lib-cell img {
@@ -178,9 +182,13 @@ body {
   opacity: 0;
   transition: opacity .15s;
   z-index: 5;
-  pointer-events: none;
+  pointer-events: none; /* overlay nunca absorbe clicks — los tags sí */
 }
-.lib-cell:hover .lib-cell-overlay { opacity: 1; pointer-events: all; }
+@media (hover: hover) {
+  .lib-cell:hover .lib-cell-overlay { opacity: 1; }
+}
+.lib-cell.selected .lib-cell-overlay { opacity: 1; }
+.lib-tag { pointer-events: all; touch-action: manipulation; }
 
 .lib-cell-num {
   display: block;
@@ -220,6 +228,14 @@ body {
   color: #aaa;
   font-size: 13px;
   letter-spacing: 1px;
+}
+
+/* Bottom sheet + overlay + FAB: ocultos en desktop por defecto — solo visibles vía media query mobile */
+#lib-cart-sheet,
+#lib-sheet-overlay,
+#lib-cart-fab { display: none !important; }
+@media (max-width: 640px) {
+  #lib-cart-sheet { display: flex !important; }
 }
 
 /* ── RIGHT: CART ── */
@@ -302,6 +318,11 @@ body {
   justify-content: center;
 }
 .cart-cell:hover .cart-cell-inner::after { display: flex; }
+/* touch: show × on tap */
+.cart-cell:active .cart-cell-inner::after { display: flex; }
+
+/* hide rotation buttons inside the mobile sheet preview */
+#lib-sheet-canvas .cart-rot-btn { display: none !important; }
 .cart-cell img {
   display: block;
   pointer-events: none;
@@ -381,9 +402,199 @@ body {
 #lib-cart-design:hover:not(:disabled) { background: #0077ee; }
 #lib-cart-design:disabled { background: #ccc; cursor: default; color: #fff; }
 
+/* ── FILTER CHIPS BAR ── */
+#lib-filter-bar {
+  display: none; /* populated + shown by JS on all screens, but styled differently */
+  background: #fff;
+  border-bottom: var(--border);
+  padding: 0 12px;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  height: 38px;
+  align-items: center;
+  scrollbar-width: none;
+}
+#lib-filter-bar::-webkit-scrollbar { display: none; }
+
+.lib-chip {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid #ddd;
+  border-radius: 100px;
+  font-family: var(--font);
+  font-size: 10px;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  cursor: pointer;
+  background: #f8f8f8;
+  color: #555;
+  transition: all .12s;
+  flex-shrink: 0;
+}
+.lib-chip:hover { border-color: #888; color: #222; }
+.lib-chip.active { background: #222; color: #fff; border-color: #222; }
+
+/* ── FLOATING ACTION BUTTON (mobile) ── */
+#lib-cart-fab {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  z-index: 100;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: .5px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+  transition: transform .1s;
+}
+#lib-cart-fab:active { transform: scale(.95); }
+
+/* ── MOBILE BOTTOM SHEET ── */
 @media (max-width: 640px) {
-  #lib-cart { width: 180px; }
-  #lib-title { display: none; }
+  /* Header: search ocupa todo el ancho */
+  #lib-title    { display: none; }
+  #lib-filter-sel { display: none; }
+  #lib-count    { display: none; }
+  #lib-search-wrap { flex: 1; max-width: none; }
+  #lib-search   { height: 34px; font-size: 14px; border-radius: 8px; background: #f0f0f0; border-color: transparent; }
+  #lib-search:focus { background: #fff; border-color: var(--sel); }
+  #lib-header   { padding: 0 12px; gap: 8px; }
+
+  /* Filter chips bar visible en mobile */
+  #lib-filter-bar { display: flex; }
+
+  /* Body: solo galería, sin sidebar */
+  #lib-body { flex-direction: column; }
+  #lib-cart  { display: none; } /* se reemplaza por el bottom sheet */
+  #lib-main  { padding: 8px; }
+
+  /* FAB visible cuando hay selección */
+  #lib-cart-fab { display: none; } /* JS la muestra cuando CART.size > 0 */
+
+  /* Bottom sheet del carrito */
+  #lib-cart-sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 2px solid #e0e0e0;
+    border-radius: 16px 16px 0 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    transform: translateY(100%);
+    transition: transform .3s ease;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.15);
+  }
+  #lib-cart-sheet.open { transform: translateY(0); }
+
+  #lib-sheet-handle {
+    width: 36px; height: 4px;
+    background: #ccc; border-radius: 2px;
+    margin: 10px auto 6px;
+    flex-shrink: 0;
+  }
+  #lib-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px 10px;
+    flex-shrink: 0;
+    border-bottom: var(--border);
+  }
+  #lib-sheet-title {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #222;
+  }
+  #lib-sheet-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #666;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  #lib-sheet-preview {
+    flex: 1;
+    overflow: auto;
+    padding: 10px;
+    background: #f4f4f4;
+    min-height: 120px;
+    position: relative;
+  }
+  #lib-sheet-canvas {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 8px rgba(0,0,0,.08);
+    width: 100%; height: 160px;
+    display: none;
+  }
+  #lib-sheet-empty {
+    color: #bbb;
+    font-size: 10px;
+    letter-spacing: .5px;
+    text-align: center;
+    line-height: 1.8;
+    padding: 20px 0;
+  }
+  #lib-sheet-footer {
+    padding: 10px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: var(--border);
+  }
+  .lib-sheet-btn-clear {
+    height: 36px;
+    background: #fff;
+    border: var(--border);
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 11px;
+    cursor: pointer;
+    color: #666;
+  }
+  .lib-sheet-btn-design {
+    height: 44px;
+    background: #111;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+    color: #fff;
+  }
+  .lib-sheet-btn-design:disabled { background: #ccc; cursor: default; }
+
+  /* Overlay */
+  #lib-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 190;
+    display: none;
+  }
+  #lib-sheet-overlay.open { display: block; }
 }
 </style>
 </head>
@@ -401,6 +612,35 @@ body {
   </div>
   <span id="lib-count"></span>
   <button id="lib-mezclar">MEZCLAR</button>
+</div>
+
+<!-- ── FILTER CHIPS BAR (mobile) ── -->
+<div id="lib-filter-bar"></div>
+
+<!-- ── FAB (mobile) ── -->
+<button id="lib-cart-fab">
+  <span>CARRITO DE EDICIÓN</span>
+  <span class="fab-count">0</span>
+</button>
+
+<!-- ── BOTTOM SHEET OVERLAY ── -->
+<div id="lib-sheet-overlay"></div>
+
+<!-- ── BOTTOM SHEET ── -->
+<div id="lib-cart-sheet">
+  <div id="lib-sheet-handle"></div>
+  <div id="lib-sheet-header">
+    <span id="lib-sheet-title">MI SELECCIÓN</span>
+    <button id="lib-sheet-close">×</button>
+  </div>
+  <div id="lib-sheet-preview">
+    <div id="lib-sheet-empty">Hacé clic en los paneles para agregar</div>
+    <div id="lib-sheet-canvas"></div>
+  </div>
+  <div id="lib-sheet-footer">
+    <button class="lib-sheet-btn-clear" id="lib-sheet-clear">Limpiar selección</button>
+    <button class="lib-sheet-btn-design" id="lib-sheet-design" disabled>Diseñar con estos →</button>
+  </div>
 </div>
 
 <!-- ── BODY SPLIT ── -->
@@ -972,8 +1212,16 @@ function renderLibLeaf(node, x, y, w, h, parent) {
   // Highlight if already in cart
   if (CART.has(node.imageId)) el.classList.add('selected');
 
-  // Click → add to cart
-  el.addEventListener('click', e => {
+  // Tap/click → toggle cart (una sola acción para touch + mouse)
+  let _tapX = 0, _tapY = 0, _tapMoved = false;
+  el.addEventListener('pointerdown', e => {
+    _tapX = e.clientX; _tapY = e.clientY; _tapMoved = false;
+  });
+  el.addEventListener('pointermove', e => {
+    if (Math.abs(e.clientX - _tapX) > 10 || Math.abs(e.clientY - _tapY) > 10) _tapMoved = true;
+  });
+  el.addEventListener('pointerup', e => {
+    if (_tapMoved) return;
     if (e.target.classList.contains('lib-tag')) return;
     cartAdd(node.imageId);
   });
@@ -1071,19 +1319,143 @@ function getFilteredImages() {
 function setFilter(cat) {
   activeFilter = cat;
   document.getElementById('lib-filter-sel').value = cat;
+  updateChips(cat);
   relayout(false);
 }
 
+function isMobileView() { return window.innerWidth <= 640; }
+
 function buildFilter() {
   const sel = document.getElementById('lib-filter-sel');
+  const bar = document.getElementById('lib-filter-bar');
   const allCats = new Set();
   IMAGES.forEach(img => (PANEL_DATA[img.id]?.cats || []).forEach(t => allCats.add(t)));
-  [...allCats].sort((a, b) => a.localeCompare(b, 'es')).forEach(cat => {
+  const sorted = [...allCats].sort((a, b) => a.localeCompare(b, 'es'));
+
+  // Populate select (desktop)
+  sorted.forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat;
     opt.textContent = cat;
     sel.appendChild(opt);
   });
+
+  // Populate chips bar (mobile)
+  bar.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'lib-chip active';
+  allChip.textContent = 'Todas';
+  allChip.dataset.cat = '';
+  allChip.addEventListener('click', () => { setFilter(''); updateChips(''); });
+  bar.appendChild(allChip);
+
+  sorted.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'lib-chip';
+    chip.textContent = cat;
+    chip.dataset.cat = cat;
+    chip.addEventListener('click', () => { setFilter(cat); updateChips(cat); });
+    bar.appendChild(chip);
+  });
+}
+
+function updateChips(activeCat) {
+  document.querySelectorAll('.lib-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.cat === activeCat);
+  });
+}
+
+// ── MOBILE GRID LAYOUT ──
+function relayoutGrid(cols) {
+  _imgQueue.length = 0;
+  const imgs = getFilteredImages();
+  document.getElementById('lib-count').textContent =
+    `${imgs.length} panel${imgs.length !== 1 ? 'es' : ''}`;
+
+  _canvas.innerHTML = '';
+  _canvas.appendChild(_emptyEl);
+
+  if (!imgs.length) {
+    _emptyEl.style.display = 'flex';
+    _canvas.style.width  = (_main.clientWidth - 16) + 'px';
+    _canvas.style.height = '180px';
+    return;
+  }
+  _emptyEl.style.display = 'none';
+
+  const gap = 4;
+  const containerW = _main.clientWidth - 16;
+  const cellSize = Math.floor((containerW - gap * (cols - 1)) / cols);
+  const shuffled = shuffleArray([...imgs]);
+  const rows = Math.ceil(shuffled.length / cols);
+  const totalH = rows * cellSize + gap * (rows - 1);
+
+  _canvas.style.width  = containerW + 'px';
+  _canvas.style.height = totalH + 'px';
+
+  shuffled.forEach((imgData, i) => {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = col * (cellSize + gap);
+    const y = row * (cellSize + gap);
+    renderLibLeaf({ type: 'leaf', imageId: imgData.id }, x, y, cellSize, cellSize, _canvas);
+  });
+}
+
+// ── FAB + BOTTOM SHEET ──
+function updateFab() {
+  const fab = document.getElementById('lib-cart-fab');
+  if (!fab) return;
+  const count = CART.size;
+  if (isMobileView()) {
+    fab.style.display = 'flex';
+    fab.querySelector('.fab-count').textContent = count || '';
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+function openSheet() {
+  document.getElementById('lib-cart-sheet').classList.add('open');
+  document.getElementById('lib-sheet-overlay').classList.add('open');
+  renderSheetCart();
+}
+
+function closeSheet() {
+  document.getElementById('lib-cart-sheet').classList.remove('open');
+  document.getElementById('lib-sheet-overlay').classList.remove('open');
+}
+
+function renderSheetCart() {
+  const sheetCanvas = document.getElementById('lib-sheet-canvas');
+  const sheetEmpty  = document.getElementById('lib-sheet-empty');
+  const sheetDesign = document.getElementById('lib-sheet-design');
+  const total = CART.size;
+  document.querySelector('#lib-sheet-header #lib-sheet-title').textContent =
+    `MI SELECCIÓN (${total})`;
+  sheetDesign.disabled = total === 0;
+  if (total === 0) {
+    sheetCanvas.style.display = 'none';
+    sheetEmpty.style.display = 'block';
+    return;
+  }
+  sheetEmpty.style.display = 'none';
+  sheetCanvas.style.display = 'block';
+  const w = sheetCanvas.clientWidth || document.getElementById('lib-sheet-preview').clientWidth - 20;
+  const h = 160;
+  sheetCanvas.style.width = w + 'px';
+  sheetCanvas.style.height = h + 'px';
+  const cartImgs = [];
+  CART.forEach((count, id) => {
+    for (let i = 0; i < count; i++) cartImgs.push({ ...IMAGES[id] });
+  });
+  const { root } = computeAutoLayout(
+    cartImgs.map(img => ({ ...img, ratio: Math.max(0.1, img.ratio || 1) })),
+    w / h
+  );
+  sheetCanvas.innerHTML = '';
+  const m = 3;
+  renderCartNode(root, m, m, w - 2 * m, h - 2 * m, sheetCanvas);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1245,6 +1617,10 @@ function renderCartLeaf(node, x, y, w, h, parent) {
                           (rot ? `transform:rotate(${rot}deg);` : '');
       inner.appendChild(img);
       inner.addEventListener('click', () => cartRemove(node.imageId));
+      inner.addEventListener('touchend', e => {
+        e.preventDefault(); // prevent ghost click and scroll interception
+        cartRemove(node.imageId);
+      }, { passive: false });
       el.appendChild(inner);
 
       // Rotation button
@@ -1308,6 +1684,7 @@ function renderCart() {
   document.getElementById('lib-cart-count').textContent =
     `${total} panel${total !== 1 ? 'es' : ''}`;
   document.getElementById('lib-cart-design').disabled = total === 0;
+  updateFab();
 
   if (total === 0) {
     _cartCanvas.style.display = 'none';
@@ -1337,6 +1714,11 @@ function renderCart() {
   _cartCanvas.innerHTML = '';
   const m = 3;
   renderCartNode(root, m, m, w - 2 * m, h - 2 * m, _cartCanvas);
+
+  // Keep mobile sheet in sync if it's open
+  if (document.getElementById('lib-cart-sheet').classList.contains('open')) {
+    renderSheetCart();
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1344,8 +1726,18 @@ function renderCart() {
 // ══════════════════════════════════════════════════════
 function goToDesigner() {
   if (!CART.size) return;
-  _persistCart(); // already up-to-date, but ensure final state is saved
-  (window.top || window).location.href = (window._appBase || '') + '/designer';
+  _persistCart();
+  // Caso 1: biblioteca.html dentro del overlay del designer.
+  //   parent = designer.html, top = página EverShop /designer  →  parent !== top
+  // Caso 2: biblioteca.html dentro del BibliotecaIframe (acceso por navbar /biblioteca).
+  //   parent = página EverShop /biblioteca, top = misma  →  parent === top
+  const inDesignerOverlay = (window.parent !== window) && (window.parent !== window.top);
+  if (inDesignerOverlay) {
+    try { localStorage.setItem('biblioteca:signal', Date.now()); } catch(e) {}
+    try { window.parent.postMessage({ type: 'biblioteca:done' }, '*'); } catch(e) {}
+  } else {
+    (window.top || window).location.href = (window._appBase || '') + '/designer';
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1365,6 +1757,33 @@ document.getElementById('lib-search').addEventListener('input', () => relayout(f
 document.getElementById('lib-mezclar').addEventListener('click',   () => relayout(true));
 document.getElementById('lib-cart-clear').addEventListener('click', cartClear);
 document.getElementById('lib-cart-design').addEventListener('click', goToDesigner);
+
+document.getElementById('lib-cart-fab').addEventListener('click', openSheet);
+document.getElementById('lib-sheet-close').addEventListener('click', closeSheet);
+document.getElementById('lib-sheet-overlay').addEventListener('click', closeSheet);
+document.getElementById('lib-sheet-clear').addEventListener('click', () => { cartClear(); closeSheet(); });
+document.getElementById('lib-sheet-design').addEventListener('click', goToDesigner);
+
+// React to cart changes made by the designer (e.g. gallery × delete button)
+// storage events fire in all other same-origin documents when localStorage changes
+function _syncCartFromStorage(newValue) {
+  CART.clear();
+  try {
+    const saved = JSON.parse(newValue ?? localStorage.getItem('panel-design-cart') ?? 'null');
+    if (saved) Object.entries(saved).forEach(([id, n]) => CART.set(parseInt(id), Number(n)));
+  } catch(err) {}
+  document.querySelectorAll('[data-img-id]').forEach(el => {
+    el.classList.toggle('selected', CART.has(parseInt(el.dataset.imgId)));
+  });
+  renderCart();
+}
+window.addEventListener('storage', e => {
+  if (e.key === 'panel-design-cart') _syncCartFromStorage(e.newValue);
+});
+// Also handle explicit sync request from designer overlay open
+window.addEventListener('message', e => {
+  if (e.data?.type === 'biblioteca:sync') _syncCartFromStorage(null);
+});
 
 probeImages(() => {
   buildFilter();

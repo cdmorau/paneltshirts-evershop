@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 export default function BibliotecaIframe() {
+    useEffect(()=>{
+        document.body.classList.add('panel-fullscreen-page');
+        return ()=>{
+            document.body.classList.remove('panel-fullscreen-page');
+        };
+    }, []);
     return /*#__PURE__*/ React.createElement("div", {
-        className: "w-full",
+        className: "panel-fullscreen-iframe-wrap",
         style: {
-            height: 'calc(100vh - 80px)',
+            width: '100%',
+            height: 'calc(100dvh - var(--panel-header-h, 64px))',
             backgroundColor: '#fff'
         }
     }, /*#__PURE__*/ React.createElement("iframe", {
         src: "/biblioteca.html",
-        className: "w-full h-full border-none",
+        style: {
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            display: 'block'
+        },
         title: "Biblioteca de Diseños PANEL!",
         allow: "fullscreen"
     }));

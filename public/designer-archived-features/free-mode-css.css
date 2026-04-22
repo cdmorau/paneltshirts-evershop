@@ -1,0 +1,50 @@
+/* ── FREE MODE ── */
+.free-el {
+  position: absolute; cursor: move; user-select: none;
+  box-sizing: border-box; touch-action: none; overflow: hidden;
+}
+.free-el > img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  pointer-events: none;
+}
+.free-el.sel { outline: 2px solid var(--sel); outline-offset: 1px; }
+.free-el .cell-del { display: none; top: -11px; right: -11px; }
+.free-el:hover .cell-del, .free-el.sel .cell-del { display: flex; }
+
+/* Handles de resize — esquinas */
+.free-rh {
+  position: absolute; width: 10px; height: 10px;
+  background: var(--sel); border: 2px solid #fff; border-radius: 50%;
+  z-index: 200; display: none; pointer-events: auto; cursor: nwse-resize;
+}
+.free-el.sel .free-rh { display: block; }
+.free-rh-nw { top: -5px; left: -5px;   cursor: nwse-resize; }
+.free-rh-ne { top: -5px; right: -5px;  cursor: nesw-resize; }
+.free-rh-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+.free-rh-sw { bottom: -5px; left: -5px;  cursor: nesw-resize; }
+
+/* Handle de rotación — círculo en la parte superior */
+.free-rot {
+  position: absolute; width: 14px; height: 14px;
+  background: #fff; border: 2px solid var(--sel); border-radius: 50%;
+  top: -26px; left: 50%; transform: translateX(-50%);
+  cursor: grab; display: none; pointer-events: auto; z-index: 200;
+}
+.free-rot::after {
+  content: '↻'; font-size: 9px; color: var(--sel);
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; pointer-events: none;
+}
+.free-el.sel .free-rot { display: block; }
+
+/* Deshabilitar resize handles del canvas en modo libre */
+#canvas.free-mode ~ .rh { display: none !important; }
+/* Modo libre: canvas idéntico al modo panel en tamaño y posición, solo cambia el borde */
+#canvas.free-mode { border-color: var(--sel) !important; }
+
+#btn-free-mode.active { background: var(--sel); color: #fff; border-color: var(--sel); }
+.free-drop-hint {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; pointer-events: none;
+  font-size: 11px; letter-spacing: 1.5px; color: #c0c0c0; text-transform: uppercase;
+}
