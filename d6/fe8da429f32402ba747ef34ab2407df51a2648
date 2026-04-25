@@ -1,0 +1,23 @@
+public/designer.html
+  c4acf5b496bb07b2 2945-2956,3028-3037
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d6fe8da429f32402ba747ef34ab2407df51a2648",
+  "prompts": {
+    "c4acf5b496bb07b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdc3fdb5-d994-42f6-a01f-cbaa81d86a11",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Cristhian David Mora Uribe",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 8,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
