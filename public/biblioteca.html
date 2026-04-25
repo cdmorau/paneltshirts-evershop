@@ -230,10 +230,11 @@ body {
   letter-spacing: 1px;
 }
 
-/* Bottom sheet + overlay + FAB: ocultos en desktop por defecto — solo visibles vía media query mobile */
+/* Bottom sheet + overlay: ocultos en desktop, visibles vía media query mobile */
 #lib-cart-sheet,
-#lib-sheet-overlay,
-#lib-cart-fab { display: none !important; }
+#lib-sheet-overlay { display: none !important; }
+/* FAB: oculto por defecto sin !important para que JS pueda mostrarlo con inline style */
+#lib-cart-fab { display: none; }
 @media (max-width: 640px) {
   #lib-cart-sheet { display: flex !important; }
 }
@@ -1407,9 +1408,9 @@ function updateFab() {
   const fab = document.getElementById('lib-cart-fab');
   if (!fab) return;
   const count = CART.size;
-  if (isMobileView()) {
+  if (isMobileView() && count > 0) {
     fab.style.display = 'flex';
-    fab.querySelector('.fab-count').textContent = count || '';
+    fab.querySelector('.fab-count').textContent = count;
   } else {
     fab.style.display = 'none';
   }
