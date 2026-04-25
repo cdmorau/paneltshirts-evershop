@@ -2942,17 +2942,9 @@ function _refreshGallery() {
       if (img) _addThumb(img, grid);
     }
   });
-  // Only show + button when there are panels in the gallery
-  if (newIds.size > 0) {
-    const btn = addBtn || (() => {
-      const b = document.createElement('div');
-      b.className = 'add-panels-btn';
-      b.title = 'Agregar paneles desde la biblioteca';
-      b.innerHTML = '<span class="add-icon">+</span><span class="add-lbl">Agregar paneles</span>';
-      b.addEventListener('click', _openBib);
-      return b;
-    })();
-    grid.appendChild(btn);
+  if (addBtn) {
+    addBtn.style.display = newIds.size > 0 ? '' : 'none';
+    grid.appendChild(addBtn);
   }
 
   // Update counts
@@ -3025,16 +3017,14 @@ function initGallery() {
     if (e.key === 'biblioteca:signal') _closeBib();
   });
 
-  // "+" button — only show when there are already panels (to add more)
-  function _createAddBtn() {
-    const btn = document.createElement('div');
-    btn.className = 'add-panels-btn';
-    btn.title = 'Agregar paneles desde la biblioteca';
-    btn.innerHTML = '<span class="add-icon">+</span><span class="add-lbl">Agregar paneles</span>';
-    btn.addEventListener('click', _openBib);
-    return btn;
-  }
-  if (galleryImages.length > 0) grid.appendChild(_createAddBtn());
+  // "+" button — always in DOM but hidden when gallery is empty
+  const addBtn = document.createElement('div');
+  addBtn.className = 'add-panels-btn';
+  addBtn.title = 'Agregar paneles desde la biblioteca';
+  addBtn.innerHTML = '<span class="add-icon">+</span><span class="add-lbl">Agregar paneles</span>';
+  addBtn.addEventListener('click', _openBib);
+  addBtn.style.display = galleryImages.length > 0 ? '' : 'none';
+  grid.appendChild(addBtn);
 
   // Gallery search filter
   document.getElementById('gallery-search').addEventListener('input', function() {
