@@ -858,7 +858,7 @@ function probeImages(done) {
     .then(data => {
       IMAGES = data.map(entry => ({
         id:       entry.id,
-        src:      '../' + entry.src,
+        src:      entry.src,
         lbl:      entry.lbl,
         ratio:    entry.ratio || 1,
         rotation: 0,
