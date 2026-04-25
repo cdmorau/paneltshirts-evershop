@@ -25,7 +25,7 @@ export default function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a
-              href="/category/e205b353-513a-41ce-b3bd-290ab8343008"
+              href="/biblioteca"
               className="panel-cta-btn px-8 py-3 text-sm text-center"
               style={{
                 backgroundColor: 'oklch(0.141 0.005 285.823)',
@@ -34,7 +34,7 @@ export default function HeroSection() {
                 borderRadius: 'var(--radius)',
               }}
             >
-              VER CATÁLOGO
+              BIBLIOTECA DE PANELES
             </a>
             <a
               href="/designer"
@@ -48,6 +48,19 @@ export default function HeroSection() {
               }}
             >
               DISEÑAR
+            </a>
+            <a
+              href="/category/e205b353-513a-41ce-b3bd-290ab8343008"
+              className="panel-cta-btn px-8 py-3 text-sm text-center"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'oklch(0.45 0 0)',
+                border: '1px solid oklch(0.80 0 0)',
+                textDecoration: 'none',
+                borderRadius: 'var(--radius)',
+              }}
+            >
+              VER CATÁLOGO
             </a>
           </div>
         </div>

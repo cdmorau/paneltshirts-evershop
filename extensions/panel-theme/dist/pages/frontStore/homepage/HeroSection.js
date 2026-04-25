@@ -25,7 +25,7 @@ export default function HeroSection() {
     }, "Diseño urbano minimalista. Camisetas con carácter, blanco sobre negro, negro sobre blanco."), /*#__PURE__*/ React.createElement("div", {
         className: "flex flex-col sm:flex-row gap-4"
     }, /*#__PURE__*/ React.createElement("a", {
-        href: "/category/e205b353-513a-41ce-b3bd-290ab8343008",
+        href: "/biblioteca",
         className: "panel-cta-btn px-8 py-3 text-sm text-center",
         style: {
             backgroundColor: 'oklch(0.141 0.005 285.823)',
@@ -33,7 +33,7 @@ export default function HeroSection() {
             textDecoration: 'none',
             borderRadius: 'var(--radius)'
         }
-    }, "VER CATÁLOGO"), /*#__PURE__*/ React.createElement("a", {
+    }, "BIBLIOTECA DE PANELES"), /*#__PURE__*/ React.createElement("a", {
         href: "/designer",
         className: "panel-cta-btn px-8 py-3 text-sm text-center",
         style: {
@@ -43,7 +43,17 @@ export default function HeroSection() {
             textDecoration: 'none',
             borderRadius: 'var(--radius)'
         }
-    }, "DISEÑAR"))), /*#__PURE__*/ React.createElement("div", {
+    }, "DISEÑAR"), /*#__PURE__*/ React.createElement("a", {
+        href: "/category/e205b353-513a-41ce-b3bd-290ab8343008",
+        className: "panel-cta-btn px-8 py-3 text-sm text-center",
+        style: {
+            backgroundColor: 'transparent',
+            color: 'oklch(0.45 0 0)',
+            border: '1px solid oklch(0.80 0 0)',
+            textDecoration: 'none',
+            borderRadius: 'var(--radius)'
+        }
+    }, "VER CATÁLOGO"))), /*#__PURE__*/ React.createElement("div", {
         className: "hidden md:flex justify-center"
     }, /*#__PURE__*/ React.createElement("img", {
         src: `${CDN}/tshirt-collection-hero-Ua7NQtwwV2R5jewfCZV6WN.webp`,
@@ -60,3 +70,4 @@ export const layout = {
     areaId: 'content',
     sortOrder: 10
 };
+
