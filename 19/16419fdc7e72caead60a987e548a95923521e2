@@ -1,0 +1,23 @@
+extensions/panel-theme/src/pages/frontStore/homepage/HeroSection.tsx
+  c4acf5b496bb07b2 28,37,52-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1916419fdc7e72caead60a987e548a95923521e2",
+  "prompts": {
+    "c4acf5b496bb07b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdc3fdb5-d994-42f6-a01f-cbaa81d86a11",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Cristhian David Mora Uribe",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 2,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}
