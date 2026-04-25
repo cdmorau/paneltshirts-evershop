@@ -1,0 +1,27 @@
+public/designer.html
+  c4acf5b496bb07b2 853,2985
+.github/workflows/gh-pages.yml
+  c4acf5b496bb07b2 1-33
+public/biblioteca.html
+  c4acf5b496bb07b2 1032,1739
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "46255a72ddfea9128463af328984cd77c910ec15",
+  "prompts": {
+    "c4acf5b496bb07b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdc3fdb5-d994-42f6-a01f-cbaa81d86a11",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Cristhian David Mora Uribe",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 4,
+      "accepted_lines": 37,
+      "overriden_lines": 0
+    }
+  }
+}
